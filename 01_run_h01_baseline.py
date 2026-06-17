@@ -1,6 +1,6 @@
 import pandas as pd
 from sklearn.dummy import DummyClassifier
-from sklearn.metrics import classification_report, accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score
 
 columns = [
     "id", "label", "statement", "subjects", "speaker", 

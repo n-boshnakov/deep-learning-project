@@ -1,6 +1,7 @@
 import pandas as pd
 from sklearn.dummy import DummyClassifier
 from sklearn.metrics import accuracy_score, f1_score
+from src.utils import print_evaluation_metrics
 
 def main() -> None:
     columns = [
@@ -31,8 +32,7 @@ def main() -> None:
     test_accuracy = accuracy_score(y_test, baseline_predictions)
     test_macro_f1 = f1_score(y_test, baseline_predictions, average="macro")
 
-    print(f"Test Accuracy: {test_accuracy * 100:.2f}%")
-    print(f"Test Macro F1: {test_macro_f1 * 100:.2f}%")
+    print_evaluation_metrics("H01 - baseline", test_accuracy, test_macro_f1)
 
 if __name__ == '__main__':
     main()

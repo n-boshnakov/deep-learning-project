@@ -30,3 +30,4 @@ class TestTrainEvaluatePipeline(unittest.TestCase):
         self.assertTrue(expected_min_value <= actual_acc <= expected_max_value)
         self.assertTrue(expected_min_value <= actual_f1 <= expected_max_value)
         
+

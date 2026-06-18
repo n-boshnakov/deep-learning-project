@@ -9,7 +9,7 @@ class TestSpacyVectorizer(unittest.TestCase):
         dummy_txt = ["Fake text", "this is some more text", "Another statement from a political leader."]
         vectorizer = features.SpacyVectorizer(model_name="en_core_web_md")
         expected_matrix_rows = 3
-        # 30 is the standard for the en_core_web_md spaCy model
+        # 300 is the standard for the en_core_web spaCy model
         expected_matrix_columns = 300
 
         # Act

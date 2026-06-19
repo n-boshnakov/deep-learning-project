@@ -3,8 +3,8 @@
 ## Linting
 printf "\n%s\n" "Pre-push hook activated."
 printf "%s\n" "Linting..."
-yapf -ir . --exclude '*ipynb*' --exclude '*venv*' --exclude '*DATA*' --exclude '*Week*'
-isort . --atomic --skip-glob '*ipynb*' --skip-glob '*venv*' --skip-glob 'DATA*' --skip-glob '*Week*' --line-width 99
+yapf -ir . --exclude '*ipynb*' --exclude '*venv*' --exclude '*DATA*' --exclude '*Week*' --exclude '**/.conda/**'
+isort . --atomic --skip-glob '*ipynb*' --skip-glob '*venv*' --skip-glob 'DATA*' --skip-glob '*Week*' --skip-glob '**/.conda/**' --line-width 99
 printf "%s\n" "Linting completed."
 
 ## Testing

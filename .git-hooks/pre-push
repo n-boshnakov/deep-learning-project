@@ -1,0 +1,51 @@
+#!/bin/sh
+
+## Linting
+printf "\n%s\n" "Pre-push hook activated."
+printf "%s\n" "Linting..."
+yapf -ir . --exclude '*ipynb*' --exclude '*venv*' --exclude '*DATA*' --exclude '*Week*'
+isort . --atomic --skip-glob '*ipynb*' --skip-glob '*venv*' --skip-glob 'DATA*' --skip-glob '*Week*' --line-width 99
+printf "%s\n" "Linting completed."
+
+## Testing
+printf "\n%s\n" "Executing tests..."
+start_tests=$(date +%s)
+coverage erase  # clear any old data
+coverage run -m pytest --durations=0
+test_status=$?
+end_tests=$(date +%s)
+printf "\n%s\n\n\n" "Testing completed in "$(($end_tests - $start_tests))" seconds."
+
+if [ "$test_status" -ne 0 ]; then
+    printf "%s\n" "❌ Tests failed — skipping coverage and type checks."
+    exit $test_status
+fi
+
+## Test coverage
+printf "%s\n" "Generating coverage report..."
+coverage_output=$(coverage report --show-missing --fail-under=100 2>&1)
+coverage_status=$?
+printf "%s\n" "$coverage_output"
+
+if [ "$coverage_status" -ne 0 ]; then
+    printf "%s\n" "❌ Coverage threshold not met."
+    exit "$coverage_status"
+fi
+
+printf "%s\n" "Code coverage successful."
+
+## MyPy
+printf "\n%s\n" "Running MyPy type checks..."
+mypy . \
+  --exclude '(^|/)\.venv(/|$)|(^|/)archive.*|(^|/)Week.*' \
+  --install-types --non-interactive --ignore-missing-imports
+mypy_status=$?
+
+if [ "$mypy_status" -ne 0 ]; then
+    printf "%s\n" "❌ MyPy found issues."
+    exit $mypy_status
+fi
+
+## Exiting
+printf "%s\n" "✅ All checks passed. Push allowed."
+exit 0

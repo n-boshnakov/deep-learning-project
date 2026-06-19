@@ -1,7 +1,7 @@
 import unittest
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from src import modeling
+from fake_news_detector import modeling
 
 class TestTrainEvaluatePipeline(unittest.TestCase):
 

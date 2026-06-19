@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from src import features
+from fake_news_detector import features
 
 class TestVectorizers(unittest.TestCase):
 

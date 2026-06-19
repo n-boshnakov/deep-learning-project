@@ -1,6 +1,6 @@
 import pandas as pd
 
-def load_and_split_data(data_file):
+def load_and_split_data(data_file: str) -> tuple[pd.Series, pd.Series]:
     columns = [
     "id", "label", "statement", "subjects", "speaker", 
     "speaker_job", "state_info", "party_affiliation", 

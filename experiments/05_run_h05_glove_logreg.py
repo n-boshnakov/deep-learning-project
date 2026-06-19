@@ -1,7 +1,7 @@
-from src.parse_data import load_and_split_data
-from src.modeling import train_evaluate_pipeline
-from src.utils import print_evaluation_metrics
-from src.features import GensimVectorizer
+from fake_news_detector.parse_data import load_and_split_data
+from fake_news_detector.modeling import train_evaluate_pipeline
+from fake_news_detector.utils import print_evaluation_metrics
+from fake_news_detector.features import GensimVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 
@@ -13,7 +13,7 @@ def main() -> None:
     x_train, y_train = load_and_split_data(train_path)
     x_test, y_test = load_and_split_data(test_path)
 
-    vectorizer = GensimVectorizer(model_name="glove-twitter-200")
+    vectorizer = GensimVectorizer(model_name="glove-twitter-25")
     classifier = LogisticRegression(max_iter=1000)
     # classifier = RandomForestClassifier(n_estimators=100, random_state=42)
 

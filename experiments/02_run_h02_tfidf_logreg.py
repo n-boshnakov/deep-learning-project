@@ -1,6 +1,6 @@
-from src.parse_data import load_and_split_data
-from src.modeling import train_evaluate_pipeline
-from src.utils import print_evaluation_metrics
+from fake_news_detector.parse_data import load_and_split_data
+from fake_news_detector.modeling import train_evaluate_pipeline
+from fake_news_detector.utils import print_evaluation_metrics
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 

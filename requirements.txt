@@ -1,0 +1,21 @@
+# Runtime
+pandas
+numpy
+scikit-learn
+matplotlib
+spacy
+gensim
+nltk
+wordcloud
+torch
+torch-directml
+transformers
+datasets
+streamlit
+
+# Development
+mypy
+isort
+yapf
+coverage
+pytest

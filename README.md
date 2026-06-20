@@ -7,7 +7,7 @@ The project adheres to strict industry standards for structuring Python modules:
 
 * `experiments/` - Execution scripts for different machine learning experiments (H01 to H05).
 * `fake_news_detector/` - Core package containing the business logic (data parsing, vectorization, pipelines).
-* `liar_dataset/` - Contains the liar dataset, split into training, testing and validation sets
+* `liar_dataset/` - Contains the liar dataset, split into training, testing and validation sets.
 * `notebooks/` - Jupyter Notebooks for Exploratory Data Analysis (EDA).
 * `tests/` - Unit tests powered by `pytest` (Code coverage: 100%).
 

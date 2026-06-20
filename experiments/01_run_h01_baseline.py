@@ -13,12 +13,12 @@ def main() -> None:
         "pants_on_fire_counts", "context"
     ]
 
-    train_df = pd.read_csv("../liar_dataset/train.tsv",
+    train_df = pd.read_csv("liar_dataset/train.tsv",
                            sep="\t",
                            header=None,
                            names=columns,
                            quoting=3)
-    test_df = pd.read_csv("../liar_dataset/test.tsv",
+    test_df = pd.read_csv("liar_dataset/test.tsv",
                           sep="\t",
                           header=None,
                           names=columns,

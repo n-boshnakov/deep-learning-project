@@ -15,8 +15,10 @@ def main() -> None:
     x_train, y_train = load_and_split_data(train_path)
     x_test, y_test = load_and_split_data(test_path)
 
-    vectorizer = GensimVectorizer(model_name="glove-twitter-25")
+    vectorizer = GensimVectorizer(model_name="glove-twitter-200")
     classifier = LogisticRegression(max_iter=1000)
+
+    # Random Forest is left as a comment, in order to enable easier switching between the two architectures
     # classifier = RandomForestClassifier(n_estimators=100, random_state=42)
 
     model, test_accuracy, test_macro_f1 = train_evaluate_pipeline(

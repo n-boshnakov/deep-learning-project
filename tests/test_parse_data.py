@@ -1,6 +1,8 @@
 import os
 import unittest
+
 from fake_news_detector import parse_data
+
 
 class TestParseData(unittest.TestCase):
 

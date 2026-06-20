@@ -1,13 +1,13 @@
-import unittest
 import os
-import joblib
-
+import unittest
 from unittest.mock import patch
+
+import joblib
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 
-from fake_news_detector.utils import print_evaluation_metrics
-from fake_news_detector.utils import save_model_pipeline
+from fake_news_detector.utils import print_evaluation_metrics, save_model_pipeline
+
 
 class TestUtils(unittest.TestCase):
 

@@ -1,6 +1,8 @@
 import os
-import joblib
 from typing import Any
+
+import joblib
+
 
 def print_evaluation_metrics(experiment_name: str, f1: float,
                              precision: float) -> None:
@@ -22,3 +24,5 @@ def save_model_pipeline(vectorizer: Any, classifier: Any, file_name: str, base_d
     }
     
     joblib.dump(pipeline_data, save_path)
+
+    print(f"\nThe model has been successfully saved under: \"{save_path}\"")

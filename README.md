@@ -13,27 +13,40 @@ The project adheres to strict industry standards for structuring Python modules:
 
 ## Installation & Setup
 
-1. Create a Virtual Environment:
+1. Create a virtual environment:
    ```bash
    conda create -n deep_learning python=3.10
    conda activate deep_learning
    ```
 
-1. Install Dependencies:
+1. Install dependencies:
 
     ```bash
     pip install -r requirements.txt
     ```
 
-1. Run a chosen experiment:
+## Running Experiments
+
+To run a chosen experiment from `/experiments`:
+
+1. Run `python -m experiments.<file-name`, for example:
 
     ```bash
-    python -m experiments.05_run_h05_glove_logreg
+    python -m experiments.04_run_h04_word2vec_logreg
     ```
+
+## Accessing the Web UI
+
+1. Run:
+    ```bash
+    streamlit run app.py
+    ```
+
+1. The application will become accessible on specified `Local` and `Network` URLs.
 
 ## Code Quality (Git Hooks)
 
-The repository is protected by a pre-push hook that enforces code quality standards. To run type checking (mypy), linting/formatting (yapf, isort), and test coverage (coverage), execute:
+The repository is protected by a pre-push hook that enforces code quality standards. To run type checking (mypy), linting/formatting (yapf, isort), and test coverage (coverage), run:
 
     ```bash
     sh .git-hooks/pre-push

@@ -48,6 +48,7 @@ To run a chosen experiment from `/experiments`:
 
 The repository is protected by a pre-push hook that enforces code quality standards. To run type checking (mypy), linting/formatting (yapf, isort), and test coverage (coverage), run:
 
-    ```bash
-    sh .git-hooks/pre-push
-    ```
+```bash
+sh .git-hooks/pre-push
+```
+

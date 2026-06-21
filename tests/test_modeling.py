@@ -82,3 +82,28 @@ class TestTrainEvaluatePytorchModel(unittest.TestCase):
         self.assertIn("train_f1", history)
         self.assertIn("val_f1", history)
         self.assertEqual(len(history["train_loss"]), 1)
+
+class TestBaselineEmbeddingNet(unittest.TestCase):
+
+    def test_when_forward_pass_then_returns_correct_shape(self):
+        # Arrange - подготвяме параметрите на мрежата
+        vocab_size = 100
+        embed_dim = 10
+        num_classes = 6
+        batch_size = 4
+        seq_len = 50
+
+        # Създаваме инстанция на модела
+        model = modeling.BaselineEmbeddingNet(vocab_size, embed_dim, num_classes)
+        
+        # Създаваме фиктивен вход: тензор с размери [4, 50] (4 изречения по 50 думи)
+        # Стойностите вътре трябва да са случайни индекси от речника (между 0 и 99)
+        dummy_input = torch.randint(0, vocab_size, (batch_size, seq_len))
+
+        # Act - прекарваме данните през forward функцията
+        output = model(dummy_input)
+
+        # Assert - проверяваме дали връща тензор и дали размерът му е правилен
+        self.assertIsInstance(output, torch.Tensor)
+        # Очакваме изходът да бъде с размер [batch_size, num_classes] -> [4, 6]
+        self.assertEqual(output.shape, (batch_size, num_classes))

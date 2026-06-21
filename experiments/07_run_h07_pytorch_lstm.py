@@ -14,8 +14,8 @@ MAX_SEQ_LEN = 50
 EMBEDDING_DIM = 100
 HIDDEN_DIM = 128
 BATCH_SIZE = 64
-EPOCHS = 400
-LEARNING_RATE = 0.0001
+EPOCHS = 100
+LEARNING_RATE = 0.001
 
 # Force CPU execution because DirectML does not currently support PyTorch's fused LSTM operations
 device = torch.device("cpu")

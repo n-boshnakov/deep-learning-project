@@ -1,13 +1,14 @@
 import os
+import pickle
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from fake_news_detector.modeling import train_evaluate_pytorch_model
+from fake_news_detector.modeling import BaselineEmbeddingNet, train_evaluate_pytorch_model
 from fake_news_detector.parse_data import LiarDataset, build_vocab, load_and_split_data
-from fake_news_detector.utils import plot_training_history, print_evaluation_metrics
+from fake_news_detector.utils import print_evaluation_metrics, save_pytorch_model, plot_training_history
 
 MAX_VOCAB_SIZE = 15000
 MAX_SEQ_LEN = 50
@@ -21,17 +22,6 @@ try:
     device = torch_directml.device()
 except ImportError:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-class BaselineEmbeddingNet(nn.Module):
-    def __init__(self, vocab_size, embed_dim, num_classes):
-        super(BaselineEmbeddingNet, self).__init__()
-        self.embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embed_dim, padding_idx=0)
-        self.fc = nn.Linear(embed_dim, num_classes)
-
-    def forward(self, x):
-        embedded = self.embedding(x)
-        pooled = embedded.mean(dim=1)
-        return self.fc(pooled)
 
 def main():
     train_path = os.path.join("liar_dataset", "train.tsv")
@@ -60,6 +50,8 @@ def main():
     print_evaluation_metrics("H06 - PyTorch Trainable Embeddings", macro_f1, macro_prec)
 
     plot_training_history(history, "H06_Embeddings")
+
+    save_pytorch_model(trained_model, word2idx)
 
 if __name__ == "__main__":
     main()

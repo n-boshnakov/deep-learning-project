@@ -96,3 +96,14 @@ def train_evaluate_pytorch_model(
         print(f"Epoch [{epoch+1}/{epochs}] - Train Loss: {avg_train_loss:.4f} | Val Loss: {avg_val_loss:.4f} | Val F1: {val_f1:.4f}")
         
     return model, history["val_f1"][-1], val_prec, history
+
+class BaselineEmbeddingNet(nn.Module):
+    def __init__(self, vocab_size, embed_dim, num_classes):
+        super(BaselineEmbeddingNet, self).__init__()
+        self.embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embed_dim, padding_idx=0)
+        self.fc = nn.Linear(embed_dim, num_classes)
+
+    def forward(self, x):
+        embedded = self.embedding(x)
+        pooled = embedded.mean(dim=1)
+        return self.fc(pooled)

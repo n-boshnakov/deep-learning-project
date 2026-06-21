@@ -1,8 +1,10 @@
 import os
+import pickle
 from typing import Any
 
 import joblib
 import matplotlib.pyplot as plt
+import torch
 
 
 def print_evaluation_metrics(experiment_name: str, f1: float,
@@ -27,6 +29,20 @@ def save_model_pipeline(vectorizer: Any, classifier: Any, file_name: str, base_d
     joblib.dump(pipeline_data, save_path)
 
     print(f"\nThe model has been successfully saved under: \"{save_path}\"")
+
+def save_pytorch_model(model, word2idx, model_name="pytorch_weights.pth", vocab_name="word2idx.pkl", base_dir="models"):
+    os.makedirs(base_dir, exist_ok=True)
+    
+    model_path = os.path.join(base_dir, model_name)
+    vocab_path = os.path.join(base_dir, vocab_name)
+
+    torch.save(model.state_dict(), model_path)
+    
+    with open(vocab_path, 'wb') as f:
+        pickle.dump(word2idx, f)
+        
+    print(f"\nThe model weights have been successfully saved under: \"{model_path}\"")
+    print(f"The vocabulary has been successfully saved under: \"{vocab_path}\"")
 
 def plot_training_history(history: dict, experiment_name: str, base_dir: str = "plots") -> None:
     os.makedirs(base_dir, exist_ok=True)

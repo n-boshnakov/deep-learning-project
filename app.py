@@ -3,7 +3,6 @@ import os
 import joblib
 import streamlit as st
 
-# Import our custom classes so joblib can recognize them during loading
 from fake_news_detector.features import GensimVectorizer, SpacyVectorizer
 
 

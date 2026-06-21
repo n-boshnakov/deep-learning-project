@@ -219,4 +219,7 @@ __marimo__/
 
 # Saved Machine Learning Models
 models/
-*.pkl
+*.pkl\
+
+#Training Plots
+plots/

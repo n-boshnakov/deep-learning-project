@@ -1,9 +1,10 @@
 # Fake News Detector (LIAR Dataset)
 
-This project is a fake news classification system based on Natural Language Processing (NLP). The models are trained on the popular LIAR Dataset ([Hugging Face](https://paperswithcode.com/dataset/liar), [GitHub](https://github.com/tfs4/liar_dataset)), which contains short statements annotated with 6 degrees of truthfulness (ranging from *pants-on-fire* to *true*).
+This project is an exploration on creating and improving a fake news classification system through NLP and deep learning techniques. The models are trained on the popular LIAR Dataset ([Hugging Face](https://paperswithcode.com/dataset/liar), [GitHub](https://github.com/tfs4/liar_dataset)), which contains short statements annotated with 6 degrees of truthfulness (ranging from *pants-on-fire* to *true*).
 
 ## Project Architecture
-The project adheres to strict industry standards for structuring Python modules:
+
+The project has the followig architecture:
 
 * `experiments/` - Execution scripts for different machine learning experiments (H01 to H05).
 * `fake_news_detector/` - Core package containing the business logic (data parsing, vectorization, pipelines).

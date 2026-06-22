@@ -175,3 +175,25 @@ class TestHybridRNNFakeNewsNet(unittest.TestCase):
                 # Assert
                 self.assertIsInstance(output, torch.Tensor)
                 self.assertEqual(output.shape, (batch_size, num_classes))
+
+    def test_when_invalid_rnn_type_passed_then_raises_value_error(self):
+        # Arrange
+        vocab_size = 100
+        embed_dim = 10
+        hidden_dim = 16
+        meta_dim = 20
+        num_classes = 6
+        invalid_rnn_type = "INVALID_NETWORK"
+
+        # Act & Assert
+        with self.assertRaises(ValueError) as context:
+            modeling.HybridRNNFakeNewsNet(
+                vocab_size=vocab_size, 
+                embed_dim=embed_dim, 
+                hidden_dim=hidden_dim, 
+                meta_dim=meta_dim, 
+                num_classes=num_classes,
+                rnn_type=invalid_rnn_type
+            )
+            
+        self.assertIn("rnn_type must be one of", str(context.exception))

@@ -1,11 +1,11 @@
 from collections import Counter
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import torch
-from torch.utils.data import Dataset
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from torch.utils.data import Dataset
 
 
 def load_and_split_data(data_file: str) -> tuple[pd.Series, pd.Series]:

@@ -132,6 +132,7 @@ class HybridRNNFakeNewsNet(nn.Module):
         super(HybridRNNFakeNewsNet, self).__init__()
 
         self.embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embed_dim, padding_idx=0)
+        self.rnn: nn.Module
         
         rnn_type = rnn_type.upper()
         if rnn_type == 'GRU':

@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from fake_news_detector.modeling import BaselineEmbeddingNet, train_evaluate_pytorch_model
 from fake_news_detector.parse_data import LiarDataset, build_vocab, load_and_split_data
 from fake_news_detector.utils import (plot_training_history, print_evaluation_metrics,
-                                      save_pytorch_model)
+                                      save_artifacts)
 
 MAX_VOCAB_SIZE = 15000
 MAX_SEQ_LEN = 50
@@ -52,7 +52,12 @@ def main():
 
     plot_training_history(history, "H06_Embeddings")
 
-    save_pytorch_model(trained_model, word2idx)
+    artifacts_to_save = {
+        f"h06_pytorch_embeddings_weights.pth": trained_model,
+        f"h06_pytorch_embeddings_word2idx.pkl": word2idx
+    }
+    
+    save_artifacts(artifacts_to_save)
 
 if __name__ == "__main__":
     main()

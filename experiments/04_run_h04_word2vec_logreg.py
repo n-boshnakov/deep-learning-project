@@ -3,7 +3,7 @@ from sklearn.linear_model import LogisticRegression
 from fake_news_detector.features import SpacyVectorizer
 from fake_news_detector.modeling import train_evaluate_pipeline
 from fake_news_detector.parse_data import load_and_split_data
-from fake_news_detector.utils import print_evaluation_metrics, save_model_pipeline
+from fake_news_detector.utils import print_evaluation_metrics, save_artifacts
 
 
 def main() -> None:
@@ -23,12 +23,16 @@ def main() -> None:
     print_evaluation_metrics("H04 - Word2Vec (spaCy) + Logistic Regression",
                              test_accuracy, test_macro_f1)
     
-    save_model_pipeline(
-        vectorizer=vectorizer, 
-        classifier=model, 
-        file_name="word2vec_lg_pipeline.pkl"
-    )
+    pipeline_data = {
+        "vectorizer": vectorizer,
+        "classifier": model
+    }
+    
+    artifacts_to_save = {
+        "word2vec_lg_pipeline.pkl": pipeline_data
+    }
 
+    save_artifacts(artifacts_to_save)
 
 if __name__ == '__main__':
     main()

@@ -1,8 +1,11 @@
 from collections import Counter
 
 import pandas as pd
+import numpy as np
 import torch
 from torch.utils.data import Dataset
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
 
 
 def load_and_split_data(data_file: str) -> tuple[pd.Series, pd.Series]:
@@ -58,3 +61,65 @@ class LiarDataset(Dataset):
         
     def __getitem__(self, idx):
         return self.x[idx], self.y[idx]
+    
+def load_hybrid_data(data_file: str) -> pd.DataFrame:
+    columns = [
+        "id", "label", "statement", "subjects", "speaker", 
+        "speaker_job", "state_info", "party_affiliation", 
+        "barely_true_counts", "false_counts", "half_true_counts", 
+        "mostly_true_counts", "pants_on_fire_counts", "context"
+    ]
+    df = pd.read_csv(data_file, sep="\t", header=None, names=columns, quoting=3)
+    
+    df = df.dropna(subset=["label", "statement"])
+    
+    num_cols = ["barely_true_counts", "false_counts", "half_true_counts", "mostly_true_counts", "pants_on_fire_counts"]
+    df[num_cols] = df[num_cols].fillna(0.0)
+
+    cat_cols = ["subjects", "speaker", "speaker_job", "state_info", "party_affiliation", "context"]
+    df[cat_cols] = df[cat_cols].fillna("unknown")
+    
+    return df
+
+class MetadataPreprocessor:
+    def __init__(self):
+        self.num_cols = [
+            "barely_true_counts", "false_counts", "half_true_counts", 
+            "mostly_true_counts", "pants_on_fire_counts"
+        ]
+        self.cat_cols = [
+            "party_affiliation", "state_info", "speaker_job", 
+            "speaker", "context", "subjects"
+        ]
+        
+        self.preprocessor = ColumnTransformer(
+            transformers=[
+                ('num', StandardScaler(), self.num_cols),
+                ('cat', OneHotEncoder(handle_unknown='ignore', sparse_output=False), self.cat_cols)
+            ]
+        )
+        
+    def fit(self, df: pd.DataFrame):
+        self.preprocessor.fit(df)
+        
+    def transform(self, df: pd.DataFrame) -> torch.Tensor:
+        features = self.preprocessor.transform(df)
+        return torch.tensor(features, dtype=torch.float32)
+
+class LiarHybridDataset(Dataset):
+    def __init__(self, df: pd.DataFrame, metadata_tensor: torch.Tensor, word2idx: dict, max_seq_len: int = 50):
+        self.x_text = text_to_indices(df["statement"], word2idx, max_seq_len)
+        
+        self.x_meta = metadata_tensor
+        
+        self.label_map = {
+            "pants-fire": 0, "false": 1, "barely-true": 2, 
+            "half-true": 3, "mostly-true": 4, "true": 5
+        }
+        self.y = torch.tensor([self.label_map[label] for label in df["label"]], dtype=torch.long)
+        
+    def __len__(self):
+        return len(self.y)
+        
+    def __getitem__(self, idx):
+        return self.x_text[idx], self.x_meta[idx], self.y[idx]

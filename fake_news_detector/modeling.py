@@ -19,12 +19,10 @@ def train_evaluate_pipeline(
     predictions = classifier.predict(vectorized_x_test)
 
     test_macro_f1 = f1_score(y_test, predictions, average="macro")
-    test_macro_precision = precision_score(y_test,
-                                           predictions,
-                                           average="macro",
-                                           zero_division=0)
+    test_macro_precision = precision_score(y_test, predictions, average="macro", zero_division=0)
 
     return model, test_macro_f1, test_macro_precision
+
 
 def evaluate_model(model: nn.Module, data_loader: DataLoader, criterion: nn.Module, device: torch.device):
     model.eval()
@@ -33,9 +31,19 @@ def evaluate_model(model: nn.Module, data_loader: DataLoader, criterion: nn.Modu
     all_true: list[int] = []
 
     with torch.no_grad():
-        for batch_x, batch_y in data_loader:
-            batch_x, batch_y = batch_x.to(device), batch_y.to(device)
-            predictions = model(batch_x)
+        for batch in data_loader:
+            if len(batch) == 3:
+                batch_text, batch_meta, batch_y = batch
+                batch_text = batch_text.to(device)
+                batch_meta = batch_meta.to(device)
+                batch_y = batch_y.to(device)
+                predictions = model(batch_text, batch_meta)
+            else:
+                batch_x, batch_y = batch
+                batch_x = batch_x.to(device)
+                batch_y = batch_y.to(device)
+                predictions = model(batch_x)
+
             loss = criterion(predictions, batch_y)
             total_loss += loss.item()
 
@@ -48,6 +56,7 @@ def evaluate_model(model: nn.Module, data_loader: DataLoader, criterion: nn.Modu
     macro_prec = precision_score(all_true, all_preds, average="macro", zero_division=0)
 
     return avg_loss, macro_f1, macro_prec
+
 
 def train_evaluate_pytorch_model(
     model: nn.Module, 
@@ -67,10 +76,19 @@ def train_evaluate_pytorch_model(
         all_train_preds: list[int] = []
         all_train_true: list[int] = []
 
-        for batch_x, batch_y in train_loader:
-            batch_x, batch_y = batch_x.to(device), batch_y.to(device)
+        for batch in train_loader:
+            if len(batch) == 3:
+                batch_text, batch_meta, batch_y = batch
+                batch_text = batch_text.to(device)
+                batch_meta = batch_meta.to(device)
+                batch_y = batch_y.to(device)
+                predictions = model(batch_text, batch_meta)
+            else:
+                batch_x, batch_y = batch
+                batch_x = batch_x.to(device)
+                batch_y = batch_y.to(device)
+                predictions = model(batch_x)
             
-            predictions = model(batch_x)
             loss = criterion(predictions, batch_y)
             
             optimizer.zero_grad()
@@ -97,6 +115,7 @@ def train_evaluate_pytorch_model(
         
     return model, history["val_f1"][-1], val_prec, history
 
+
 class BaselineEmbeddingNet(nn.Module):
     def __init__(self, vocab_size, embed_dim, num_classes):
         super(BaselineEmbeddingNet, self).__init__()
@@ -107,3 +126,39 @@ class BaselineEmbeddingNet(nn.Module):
         embedded = self.embedding(x)
         pooled = embedded.mean(dim=1)
         return self.fc(pooled)
+
+class HybridRNNFakeNewsNet(nn.Module):
+    def __init__(self, vocab_size: int, embed_dim: int, hidden_dim: int, meta_dim: int, num_classes: int, rnn_type: str = 'GRU'):
+        super(HybridRNNFakeNewsNet, self).__init__()
+
+        self.embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embed_dim, padding_idx=0)
+        
+        rnn_type = rnn_type.upper()
+        if rnn_type == 'GRU':
+            self.rnn = nn.GRU(input_size=embed_dim, hidden_size=hidden_dim, batch_first=True)
+        elif rnn_type == 'LSTM':
+            self.rnn = nn.LSTM(input_size=embed_dim, hidden_size=hidden_dim, batch_first=True)
+        elif rnn_type == 'RNN':
+            self.rnn = nn.RNN(input_size=embed_dim, hidden_size=hidden_dim, batch_first=True)
+        else:
+            raise ValueError("rnn_type must be one of: 'GRU', 'LSTM', 'RNN'")
+
+        self.meta_fc = nn.Linear(meta_dim, 32)
+        self.meta_relu = nn.ReLU()
+        
+        self.fc_out = nn.Linear(hidden_dim + 32, num_classes)
+
+    def forward(self, text_input, meta_input):
+        embedded = self.embedding(text_input)
+        rnn_out, hidden = self.rnn(embedded)
+        
+        if isinstance(self.rnn, nn.LSTM):
+            text_features = hidden[0][-1] 
+        else:
+            text_features = hidden[-1] 
+
+        meta_features = self.meta_relu(self.meta_fc(meta_input))
+
+        combined_features = torch.cat((text_features, meta_features), dim=1)
+
+        return self.fc_out(combined_features)

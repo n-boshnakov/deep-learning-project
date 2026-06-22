@@ -82,7 +82,8 @@ def load_hybrid_data(data_file: str) -> pd.DataFrame:
     return df
 
 class MetadataPreprocessor:
-    def __init__(self):
+    """Handles scaling of numerical columns and one-hot encoding of categorical columns."""
+    def __init__(self, min_frequency: int = 1):
         self.num_cols = [
             "barely_true_counts", "false_counts", "half_true_counts", 
             "mostly_true_counts", "pants_on_fire_counts"
@@ -95,14 +96,16 @@ class MetadataPreprocessor:
         self.preprocessor = ColumnTransformer(
             transformers=[
                 ('num', StandardScaler(), self.num_cols),
-                ('cat', OneHotEncoder(handle_unknown='ignore', sparse_output=False), self.cat_cols)
+                ('cat', OneHotEncoder(handle_unknown='ignore', sparse_output=False, min_frequency=min_frequency), self.cat_cols)
             ]
         )
         
     def fit(self, df: pd.DataFrame):
+        """Learns the vocabulary of categories and the mean/std of numbers from the TRAIN set."""
         self.preprocessor.fit(df)
         
     def transform(self, df: pd.DataFrame) -> torch.Tensor:
+        """Transforms any DataFrame into a numerical PyTorch tensor."""
         features = self.preprocessor.transform(df)
         return torch.tensor(features, dtype=torch.float32)
 

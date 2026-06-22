@@ -128,12 +128,12 @@ class BaselineEmbeddingNet(nn.Module):
         return self.fc(pooled)
 
 class HybridRNNFakeNewsNet(nn.Module):
-    def __init__(self, vocab_size: int, embed_dim: int, hidden_dim: int, meta_dim: int, num_classes: int, rnn_type: str = 'GRU'):
+    def __init__(self, vocab_size: int, embed_dim: int, hidden_dim: int, meta_dim: int, num_classes: int, rnn_type: str = 'GRU', dropout_rate: float = 0.5):
         super(HybridRNNFakeNewsNet, self).__init__()
 
         self.embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embed_dim, padding_idx=0)
-        self.rnn: nn.Module
         
+        self.rnn: nn.Module 
         rnn_type = rnn_type.upper()
         if rnn_type == 'GRU':
             self.rnn = nn.GRU(input_size=embed_dim, hidden_size=hidden_dim, batch_first=True)
@@ -146,6 +146,8 @@ class HybridRNNFakeNewsNet(nn.Module):
 
         self.meta_fc = nn.Linear(meta_dim, 32)
         self.meta_relu = nn.ReLU()
+        
+        self.dropout = nn.Dropout(p=dropout_rate)
         
         self.fc_out = nn.Linear(hidden_dim + 32, num_classes)
 
@@ -161,5 +163,7 @@ class HybridRNNFakeNewsNet(nn.Module):
         meta_features = self.meta_relu(self.meta_fc(meta_input))
 
         combined_features = torch.cat((text_features, meta_features), dim=1)
-
+        
+        combined_features = self.dropout(combined_features)
+        
         return self.fc_out(combined_features)

@@ -5,6 +5,7 @@ from typing import Any
 import joblib
 import matplotlib.pyplot as plt
 import torch
+import torch.nn as nn
 
 
 def print_evaluation_metrics(experiment_name: str, f1: float,
@@ -14,35 +15,27 @@ def print_evaluation_metrics(experiment_name: str, f1: float,
     print(f"Macro Precision: {precision * 100:.2f}%")
     print(f"Macro F1: {f1 * 100:.2f}%")
  
-def save_model_pipeline(vectorizer: Any, classifier: Any, file_name: str, base_dir: str = "models") -> None:
-    # Saves the NLP vectorizer and the machine learning classifier together as a pipeline in a .pkl file.
-
+def save_artifacts(artifacts: dict[str, Any], base_dir: str = "models") -> None:
     os.makedirs(base_dir, exist_ok=True)
+    print()
     
-    save_path = os.path.join(base_dir, file_name)
+    for file_name, obj in artifacts.items():
+        save_path = os.path.join(base_dir, file_name)
 
-    pipeline_data = {
-        "vectorizer": vectorizer,
-        "classifier": classifier
-    }
-    
-    joblib.dump(pipeline_data, save_path)
+        # 1. If it's a PyTorch Neural Network, save its state dictionary
+        if isinstance(obj, nn.Module):
+            torch.save(obj.state_dict(), save_path)
+            
+        # 2. If it's a Python dictionary (like our word2idx vocabulary), use pickle
+        elif isinstance(obj, dict):
+            with open(save_path, 'wb') as f:
+                pickle.dump(obj, f)
+                
+        # 3. For everything else (Scikit-Learn pipelines, preprocessors), use joblib
+        else:
+            joblib.dump(obj, save_path)
 
-    print(f"\nThe model has been successfully saved under: \"{save_path}\"")
-
-def save_pytorch_model(model, word2idx, model_name="pytorch_weights.pth", vocab_name="word2idx.pkl", base_dir="models"):
-    os.makedirs(base_dir, exist_ok=True)
-    
-    model_path = os.path.join(base_dir, model_name)
-    vocab_path = os.path.join(base_dir, vocab_name)
-
-    torch.save(model.state_dict(), model_path)
-    
-    with open(vocab_path, 'wb') as f:
-        pickle.dump(word2idx, f)
-        
-    print(f"\nThe model weights have been successfully saved under: \"{model_path}\"")
-    print(f"The vocabulary has been successfully saved under: \"{vocab_path}\"")
+        print(f"Successfully saved artifact under: \"{save_path}\"")
 
 def plot_training_history(history: dict, experiment_name: str, base_dir: str = "plots") -> None:
     os.makedirs(base_dir, exist_ok=True)

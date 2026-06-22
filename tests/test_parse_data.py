@@ -12,28 +12,27 @@ class TestParseData(unittest.TestCase):
     def setUp(self) -> None:
         self.test_filepath = "dummy.tsv"
 
+        with open(self.test_filepath, "w", encoding="utf-8") as f:
+            # 1. Valid row
+            f.write("1\ttrue\tTest sentence 1.\tlabel-1\tivan\tworker\tBulgaria\tright\t0\t1\t1\t1\t1\tnews\n")
+            # 2. Valid row
+            f.write("2\tfalse\tTest sentence 2.\tlabel-6\tmaria\tsecretary\tRomania\tleft\t2\t1\t1\t1\t1\temail\n")
+            # 3. Valid row
+            f.write("3\ttrue\tTest sentence 3.\tlabel-1\tignat\tit-spec\tBulgaria\tcenter\t0\t1\t1\t1\t1\tpress\n")
+            # 4. Missing label (Should be dropped)
+            f.write("4\t\tTest sentence 4.\tlabel-3\tmaria\tsecretary\tRomania\tleft\t2\t1\t1\t1\t1\temail\n")
+            # 5. Missing statement (Should be dropped)
+            f.write("5\tfalse\t\tlabel-3\tmaria\tsecretary\tRomania\tleft\t2\t1\t1\t1\t1\temail\n")
+            # 6. Valid statement and label, but missing ALL metadata (Should be filled)
+            f.write("6\thalf-true\tTest sentence 6.\t\t\t\t\t\t\t\t\t\t\t\n")
+
     def tearDown(self) -> None:
         if os.path.exists(self.test_filepath):
             os.remove(self.test_filepath)
 
-    def test_when_loading_and_splitting_data_then_returns_only_rows_with_no_missing_crucial_information(
-            self):
+    def test_when_loading_and_splitting_data_then_returns_only_rows_with_no_missing_crucial_information(self):
         # Arrange
-        expected_valid_rows = 3
-
-        with open(self.test_filepath, "w", encoding="utf-8") as f:
-            f.write(
-                "1\ttrue\tTest sentence 1.\tlabel-1,label-2,label-3\tivan-andreev\tworker\tBulgaria\tright\t0\t1\t1\t1\t1\tIn a news story\n"
-            )
-            f.write(
-                "2\tfalse\tTest sentence 2, that is false.\tlabel-6\tmaria-krumova\tsecretary\tRomania\tleft\t2\t1\t1\t1\t1\tAn email\n"
-            )
-            f.write(
-                "3\ttrue\tTest sentence 3. This one is also true.\tlabel-1, label-4\tignat-ivanov\tit-specialist\tBulgaria\tcenter\t0\t1\t1\t1\t1\tPress conference\n"
-            )
-            f.write(
-                "4\t\tTest sentence 4, which is missing a truth class.\tlabel-3, label-4\tmaria-krumova\tsecretary\tRomania\tleft\t2\t1\t1\t1\t1\tAn email\n"
-            )
+        expected_valid_rows = 4  # Rows 1, 2, 3, 6 are valid for this function
 
         # Act
         actual_x, actual_y = parse_data.load_and_split_data(self.test_filepath)
@@ -42,11 +41,31 @@ class TestParseData(unittest.TestCase):
         self.assertEqual(expected_valid_rows, len(actual_x))
         self.assertEqual(expected_valid_rows, len(actual_y))
 
+    def test_when_loading_hybrid_data_then_fills_nans_and_drops_invalid(self):
+        # Arrange
+        expected_valid_rows = 4  # Rows 1, 2, 3, 6
+
+        # Act
+        df = parse_data.load_hybrid_data(self.test_filepath)
+
+        # Assert
+        self.assertEqual(len(df), expected_valid_rows)
+        
+        # Verify that row 6 (which is at index 3 in the dataframe) got its NaNs filled
+        row_6 = df.iloc[3]
+        
+        # Check numerical fills
+        self.assertEqual(row_6["barely_true_counts"], 0.0)
+        self.assertEqual(row_6["false_counts"], 0.0)
+        
+        # Check categorical fills
+        self.assertEqual(row_6["speaker"], "unknown")
+        self.assertEqual(row_6["party_affiliation"], "unknown")
+
 
 class TestParseDataDeepLearning(unittest.TestCase):
 
-    def test_when_building_vocab_then_returns_correct_dict_with_special_tokens(
-            self):
+    def test_when_building_vocab_then_returns_correct_dict_with_special_tokens(self):
         # Arrange
         texts = pd.Series(["hello world", "hello test"])
         expected_pad_idx = 0
@@ -63,8 +82,7 @@ class TestParseDataDeepLearning(unittest.TestCase):
         self.assertEqual(vocab["<UNK>"], expected_unk_idx)
         self.assertIn("hello", vocab)
 
-    def test_when_text_to_indices_called_then_pads_and_truncates_correctly(
-            self):
+    def test_when_text_to_indices_called_then_pads_and_truncates_correctly(self):
         # Arrange
         texts = pd.Series(["hello world", "a very long sentence to truncate"])
         vocab = {"<PAD>": 0, "<UNK>": 1, "hello": 2, "world": 3, "a": 4}
@@ -98,3 +116,60 @@ class TestParseDataDeepLearning(unittest.TestCase):
         self.assertIsInstance(features, torch.Tensor)
         self.assertIsInstance(label, torch.Tensor)
         self.assertEqual(label.item(), expected_first_label)
+
+
+class TestHybridDataDeepLearning(unittest.TestCase):
+
+    def setUp(self) -> None:
+        data = {
+            "statement": ["fake text", "real text"],
+            "label": ["false", "true"],
+            "barely_true_counts": [1.0, 0.0],
+            "false_counts": [2.0, 0.0],
+            "half_true_counts": [0.0, 0.0],
+            "mostly_true_counts": [0.0, 1.0],
+            "pants_on_fire_counts": [1.0, 0.0],
+            "party_affiliation": ["republican", "democrat"],
+            "state_info": ["Texas", "California"],
+            "speaker_job": ["governor", "senator"],
+            "speaker": ["smith", "jones"],
+            "context": ["tv", "radio"],
+            "subjects": ["tax", "health"]
+        }
+        self.dummy_df = pd.DataFrame(data)
+        self.dummy_vocab = {"<PAD>": 0, "<UNK>": 1, "fake": 2, "text": 3, "real": 4}
+
+    def test_when_preprocessing_metadata_then_returns_valid_tensor(self):
+        # Arrange
+        preprocessor = parse_data.MetadataPreprocessor()
+        
+        # Act
+        preprocessor.fit(self.dummy_df)
+        tensor_out = preprocessor.transform(self.dummy_df)
+        
+        # Assert
+        self.assertIsInstance(tensor_out, torch.Tensor)
+        self.assertEqual(tensor_out.dtype, torch.float32)
+        self.assertEqual(tensor_out.shape[0], 2)
+        self.assertTrue(tensor_out.shape[1] > 5)
+
+    def test_when_using_hybrid_dataset_then_returns_three_elements(self):
+        # Arrange
+        preprocessor = parse_data.MetadataPreprocessor()
+        preprocessor.fit(self.dummy_df)
+        meta_tensor = preprocessor.transform(self.dummy_df)
+        expected_length = 2
+        
+        # Act
+        dataset = parse_data.LiarHybridDataset(self.dummy_df, meta_tensor, self.dummy_vocab, max_seq_len=5)
+        
+        # Assert
+        self.assertEqual(len(dataset), expected_length)
+        
+        x_text, x_meta, y = dataset[0]
+        
+        self.assertIsInstance(x_text, torch.Tensor)
+        self.assertIsInstance(x_meta, torch.Tensor)
+        self.assertIsInstance(y, torch.Tensor)
+        
+        self.assertEqual(y.item(), 1)

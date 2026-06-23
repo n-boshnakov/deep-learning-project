@@ -173,3 +173,68 @@ class TestHybridDataDeepLearning(unittest.TestCase):
         self.assertIsInstance(y, torch.Tensor)
         
         self.assertEqual(y.item(), 1)
+
+class MockTokenizer:
+    # A simple mock tokenizer to avoid downloading HuggingFace models during unit tests.
+    def __call__(self, text, add_special_tokens=True, max_length=50, 
+                 padding='max_length', truncation=True, 
+                 return_attention_mask=True, return_tensors='pt'):
+        return {
+            'input_ids': torch.ones((1, max_length), dtype=torch.long),
+            'attention_mask': torch.ones((1, max_length), dtype=torch.long)
+        }
+
+class TestTransformerDatasets(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.texts = ["fake statement", "true statement", "another one"]
+        self.labels = [0, 5, 2]
+        self.meta_features = torch.tensor([
+            [0.1, 0.2, 0.3],
+            [0.4, 0.5, 0.6],
+            [0.7, 0.8, 0.9]
+        ], dtype=torch.float32)
+        self.tokenizer = MockTokenizer()
+        self.max_len = 8
+
+    def test_when_transformer_dataset_instantiated_then_returns_valid_dict(self):
+        # Arrange
+        dataset = parse_data.LiarTransformerDataset(self.texts, self.labels, self.tokenizer, self.max_len)
+        
+        # Act
+        length = len(dataset)
+        item = dataset[0]
+
+        # Assert
+        self.assertEqual(length, 3)
+        self.assertIsInstance(item, dict)
+        self.assertIn('input_ids', item)
+        self.assertIn('attention_mask', item)
+        self.assertIn('labels', item)
+        
+        self.assertEqual(item['input_ids'].shape, torch.Size([self.max_len]))
+        self.assertEqual(item['attention_mask'].shape, torch.Size([self.max_len]))
+        self.assertIsInstance(item['labels'], torch.Tensor)
+        self.assertEqual(item['labels'].item(), 0)
+
+    def test_when_hybrid_transformer_dataset_instantiated_then_returns_meta_features(self):
+        # Arrange
+        dataset = parse_data.LiarHybridBertDataset(
+            self.texts, self.meta_features, self.labels, self.tokenizer, self.max_len
+        )
+        
+        # Act
+        length = len(dataset)
+        item = dataset[1]
+
+        # Assert
+        self.assertEqual(length, 3)
+        self.assertIsInstance(item, dict)
+        self.assertIn('input_ids', item)
+        self.assertIn('attention_mask', item)
+        self.assertIn('meta_features', item)
+        self.assertIn('labels', item)
+        
+        # Verify meta features mapping (should match the second row of the setup tensor)
+        self.assertTrue(torch.equal(item['meta_features'], self.meta_features[1]))
+        self.assertEqual(item['labels'].item(), 5)

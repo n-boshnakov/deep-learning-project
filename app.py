@@ -5,15 +5,18 @@ import joblib
 import pandas as pd
 import streamlit as st
 import torch
+from transformers import AutoTokenizer
 
-from fake_news_detector.modeling import BaselineEmbeddingNet, HybridRNNFakeNewsNet
+from fake_news_detector.modeling import BaselineEmbeddingNet, HybridBertFakeNewsNet, HybridRNNFakeNewsNet
 
-# Supported active models: "h04_sklearn", "h06_baseline", "h08_hybrid_gru"
-ACTIVE_MODEL_TYPE = "h08_hybrid_gru"
+# Supported active models: "h04_sklearn", "h06_baseline", "h08_hybrid_gru", "h14_roberta"
+ACTIVE_MODEL_TYPE = "h14_roberta"
 
 MAX_SEQ_LEN = 50
 EMBEDDING_DIM = 50
 RNN_HIDDEN_DIM = 64
+H14_MODEL_NAME = "roberta-base"
+H14_MAX_SEQ_LEN = 64
 
 IDX_TO_LABEL = {
     0: "pants-fire",
@@ -99,6 +102,43 @@ def load_h08_pipeline():
     return model, word2idx, preprocessor
 
 
+@st.cache_resource
+def load_h14_pipeline():
+    weights_path = "models/h14_roberta_weights.pth"
+    prep_path = "models/h14_metadata_preprocessor.pkl"
+
+    if not os.path.exists(weights_path) or not os.path.exists(prep_path):
+        return None, None, None
+
+    preprocessor = joblib.load(prep_path)
+
+    dummy_df = pd.DataFrame([{
+        "barely_true_counts": 0.0,
+        "false_counts": 0.0,
+        "half_true_counts": 0.0,
+        "mostly_true_counts": 0.0,
+        "pants_on_fire_counts": 0.0,
+        "party_affiliation": "unknown",
+        "state_info": "unknown",
+        "speaker_job": "unknown",
+        "speaker": "unknown",
+        "context": "unknown",
+        "subjects": "unknown"
+    }])
+    dummy_tensor = preprocessor.transform(dummy_df)
+    meta_feature_count = dummy_tensor.shape[1]
+
+    model = HybridBertFakeNewsNet(bert_model_name=H14_MODEL_NAME,
+                                  meta_dim=meta_feature_count)
+    model.load_state_dict(
+        torch.load(weights_path, map_location=torch.device('cpu')))
+    model.eval()
+
+    tokenizer = AutoTokenizer.from_pretrained(H14_MODEL_NAME)
+
+    return model, preprocessor, tokenizer
+
+
 def preprocess_text_pytorch(text: str, word2idx: dict) -> torch.Tensor:
     tokens = [word2idx.get(word.lower(), 1) for word in text.split()]
     if len(tokens) > MAX_SEQ_LEN:
@@ -151,6 +191,17 @@ def main():
             f"**Active Model:** {type(pt_model).__name__} (H08 - Hybrid text + metadata)"
         )
 
+    elif ACTIVE_MODEL_TYPE == "h14_roberta":
+        pt_model, preprocessor, tokenizer = load_h14_pipeline()
+        if pt_model is None:
+            st.error(
+                "H14 RoBERTa files not found in `models/`. Expected: h14_roberta_weights.pth, h14_metadata_preprocessor.pkl"
+            )
+            return
+        st.write(
+            f"**Active Model:** {type(pt_model).__name__} (H14 - Hybrid RoBERTa + metadata)"
+        )
+
     else:
         st.error("Invalid ACTIVE_MODEL_TYPE specified in the code.")
         return
@@ -161,7 +212,7 @@ def main():
                               height=100)
 
     meta_df = None
-    if ACTIVE_MODEL_TYPE == "h08_hybrid_gru":
+    if ACTIVE_MODEL_TYPE in ("h08_hybrid_gru", "h14_roberta"):
         st.markdown("#### Additional Context (Metadata)")
         st.markdown(
             "This model requires context about the speaker to make an accurate prediction."
@@ -232,6 +283,23 @@ def main():
 
                     with torch.no_grad():
                         output = pt_model(text_tensor, meta_tensor)
+                        prediction_idx = torch.argmax(output, dim=1).item()
+                    prediction_label = IDX_TO_LABEL.get(
+                        prediction_idx, "Unknown")
+
+                elif ACTIVE_MODEL_TYPE == "h14_roberta":
+                    encoding = tokenizer(user_input,
+                                         max_length=H14_MAX_SEQ_LEN,
+                                         padding="max_length",
+                                         truncation=True,
+                                         return_tensors="pt")
+                    meta_tensor = preprocessor.transform(meta_df)
+
+                    with torch.no_grad():
+                        output = pt_model(
+                            input_ids=encoding["input_ids"],
+                            attention_mask=encoding["attention_mask"],
+                            meta_input=meta_tensor)
                         prediction_idx = torch.argmax(output, dim=1).item()
                     prediction_label = IDX_TO_LABEL.get(
                         prediction_idx, "Unknown")

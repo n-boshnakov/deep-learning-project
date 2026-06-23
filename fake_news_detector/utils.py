@@ -14,30 +14,35 @@ def print_evaluation_metrics(experiment_name: str, f1: float,
     print(f"Experiment: {experiment_name}")
     print(f"Macro Precision: {precision * 100:.2f}%")
     print(f"Macro F1: {f1 * 100:.2f}%")
- 
-def save_artifacts(artifacts: dict[str, Any], base_dir: str = "models") -> None:
+
+
+def save_artifacts(artifacts: dict[str, Any],
+                   base_dir: str = "models") -> None:
     os.makedirs(base_dir, exist_ok=True)
     print()
-    
+
     for file_name, obj in artifacts.items():
         save_path = os.path.join(base_dir, file_name)
 
         # 1. If it's a PyTorch Neural Network, save its state dictionary
         if isinstance(obj, nn.Module):
             torch.save(obj.state_dict(), save_path)
-            
+
         # 2. If it's a Python dictionary (like our word2idx vocabulary), use pickle
         elif isinstance(obj, dict):
             with open(save_path, 'wb') as f:
                 pickle.dump(obj, f)
-                
+
         # 3. For everything else (Scikit-Learn pipelines, preprocessors), use joblib
         else:
             joblib.dump(obj, save_path)
 
         print(f"Successfully saved artifact under: \"{save_path}\"")
 
-def plot_training_history(history: dict, experiment_name: str, base_dir: str = "plots") -> None:
+
+def plot_training_history(history: dict,
+                          experiment_name: str,
+                          base_dir: str = "plots") -> None:
     os.makedirs(base_dir, exist_ok=True)
 
     epochs = range(1, len(history["train_loss"]) + 1)
@@ -61,6 +66,7 @@ def plot_training_history(history: dict, experiment_name: str, base_dir: str = "
     plt.legend()
 
     plt.tight_layout()
-    save_path = os.path.join(base_dir, f"{experiment_name.replace(' ', '_')}_history.png")
+    save_path = os.path.join(
+        base_dir, f"{experiment_name.replace(' ', '_')}_history.png")
     plt.savefig(save_path)
     plt.close()

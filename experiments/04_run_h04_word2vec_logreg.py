@@ -22,17 +22,13 @@ def main() -> None:
 
     print_evaluation_metrics("H04 - Word2Vec (spaCy) + Logistic Regression",
                              test_accuracy, test_macro_f1)
-    
-    pipeline_data = {
-        "vectorizer": vectorizer,
-        "classifier": model
-    }
-    
-    artifacts_to_save = {
-        "word2vec_lg_pipeline.pkl": pipeline_data
-    }
+
+    pipeline_data = {"vectorizer": vectorizer, "classifier": model}
+
+    artifacts_to_save = {"word2vec_lg_pipeline.pkl": pipeline_data}
 
     save_artifacts(artifacts_to_save)
+
 
 if __name__ == '__main__':
     main()

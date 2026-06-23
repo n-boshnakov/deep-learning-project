@@ -30,6 +30,7 @@ RNN_TYPE = 'GRU'
 
 device = torch.device("cpu")
 
+
 def main():
     print(f"Using device: {device}")
     print(f"Active Architecture: Hybrid {RNN_TYPE}")
@@ -42,43 +43,60 @@ def main():
 
     print("Fitting metadata preprocessor...")
     preprocessor = MetadataPreprocessor()
-    
-    preprocessor.fit(df_train) 
-    
+
+    preprocessor.fit(df_train)
+
     train_meta_tensor = preprocessor.transform(df_train)
     test_meta_tensor = preprocessor.transform(df_test)
-    
+
     meta_feature_count = train_meta_tensor.shape[1]
-    print(f"Metadata transformed into {meta_feature_count} numerical features per statement.")
+    print(
+        f"Metadata transformed into {meta_feature_count} numerical features per statement."
+    )
 
-    word2idx = build_vocab(df_train["statement"], max_vocab_size=MAX_VOCAB_SIZE)
+    word2idx = build_vocab(df_train["statement"],
+                           max_vocab_size=MAX_VOCAB_SIZE)
 
-    train_dataset = LiarHybridDataset(df_train, train_meta_tensor, word2idx, max_seq_len=MAX_SEQ_LEN)
-    test_dataset = LiarHybridDataset(df_test, test_meta_tensor, word2idx, max_seq_len=MAX_SEQ_LEN)
+    train_dataset = LiarHybridDataset(df_train,
+                                      train_meta_tensor,
+                                      word2idx,
+                                      max_seq_len=MAX_SEQ_LEN)
+    test_dataset = LiarHybridDataset(df_test,
+                                     test_meta_tensor,
+                                     word2idx,
+                                     max_seq_len=MAX_SEQ_LEN)
 
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    train_loader = DataLoader(train_dataset,
+                              batch_size=BATCH_SIZE,
+                              shuffle=True)
+    test_loader = DataLoader(test_dataset,
+                             batch_size=BATCH_SIZE,
+                             shuffle=False)
 
-    model = HybridRNNFakeNewsNet(
-        vocab_size=len(word2idx), 
-        embed_dim=EMBEDDING_DIM, 
-        hidden_dim=RNN_HIDDEN_DIM, 
-        meta_dim=meta_feature_count, 
-        num_classes=6,
-        rnn_type=RNN_TYPE
-    ).to(device)
+    model = HybridRNNFakeNewsNet(vocab_size=len(word2idx),
+                                 embed_dim=EMBEDDING_DIM,
+                                 hidden_dim=RNN_HIDDEN_DIM,
+                                 meta_dim=meta_feature_count,
+                                 num_classes=6,
+                                 rnn_type=RNN_TYPE).to(device)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     print(f"\nStarting Training for Hybrid {RNN_TYPE} Model...")
     trained_model, macro_f1, macro_prec, history = train_evaluate_pytorch_model(
-        model, train_loader, test_loader, criterion, optimizer, device, epochs=EPOCHS
-    )
+        model,
+        train_loader,
+        test_loader,
+        criterion,
+        optimizer,
+        device,
+        epochs=EPOCHS)
 
     print()
-    print_evaluation_metrics(f"H08 - Hybrid {RNN_TYPE} (Text + Metadata)", macro_f1, macro_prec)
-    
+    print_evaluation_metrics(f"H08 - Hybrid {RNN_TYPE} (Text + Metadata)",
+                             macro_f1, macro_prec)
+
     # plot_training_history(history, f"H08_Hybrid_{RNN_TYPE}")
 
     artifacts_to_save = {
@@ -86,8 +104,9 @@ def main():
         f"h08_{RNN_TYPE.lower()}_word2idx.pkl": word2idx,
         "metadata_preprocessor.pkl": preprocessor
     }
-    
+
     save_artifacts(artifacts_to_save)
+
 
 if __name__ == "__main__":
     main()

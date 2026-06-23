@@ -21,11 +21,16 @@ LEARNING_RATE = 0.001
 device = torch.device("cpu")
 print("Using CPU for LSTM compatibility...")
 
+
 class LSTMNet(nn.Module):
+
     def __init__(self, vocab_size, embed_dim, hidden_dim, num_classes):
         super(LSTMNet, self).__init__()
         self.embedding = nn.Embedding(vocab_size, embed_dim, padding_idx=0)
-        self.lstm = nn.LSTM(embed_dim, hidden_dim, batch_first=True, bidirectional=True)
+        self.lstm = nn.LSTM(embed_dim,
+                            hidden_dim,
+                            batch_first=True,
+                            bidirectional=True)
         self.fc = nn.Linear(hidden_dim * 2, num_classes)
         self.dropout = nn.Dropout(0.3)
 
@@ -81,6 +86,7 @@ def main():
 
     from fake_news_detector.utils import plot_training_history
     plot_training_history(history, "H07_LSTM")
+
 
 if __name__ == "__main__":
     main()

@@ -4,6 +4,7 @@ import torch.nn as nn
 from sklearn.base import BaseEstimator
 from sklearn.metrics import f1_score, precision_score
 from torch.utils.data import DataLoader
+from transformers import AutoModel
 
 
 def train_evaluate_pipeline(
@@ -19,12 +20,16 @@ def train_evaluate_pipeline(
     predictions = classifier.predict(vectorized_x_test)
 
     test_macro_f1 = f1_score(y_test, predictions, average="macro")
-    test_macro_precision = precision_score(y_test, predictions, average="macro", zero_division=0)
+    test_macro_precision = precision_score(y_test,
+                                           predictions,
+                                           average="macro",
+                                           zero_division=0)
 
     return model, test_macro_f1, test_macro_precision
 
 
-def evaluate_model(model: nn.Module, data_loader: DataLoader, criterion: nn.Module, device: torch.device):
+def evaluate_model(model: nn.Module, data_loader: DataLoader,
+                   criterion: nn.Module, device: torch.device):
     model.eval()
     total_loss = 0.0
     all_preds: list[int] = []
@@ -53,22 +58,29 @@ def evaluate_model(model: nn.Module, data_loader: DataLoader, criterion: nn.Modu
 
     avg_loss = total_loss / len(data_loader)
     macro_f1 = f1_score(all_true, all_preds, average="macro", zero_division=0)
-    macro_prec = precision_score(all_true, all_preds, average="macro", zero_division=0)
+    macro_prec = precision_score(all_true,
+                                 all_preds,
+                                 average="macro",
+                                 zero_division=0)
 
     return avg_loss, macro_f1, macro_prec
 
 
 def train_evaluate_pytorch_model(
-    model: nn.Module, 
-    train_loader: DataLoader, 
-    test_loader: DataLoader, 
-    criterion: nn.Module, 
-    optimizer: torch.optim.Optimizer, 
-    device: torch.device, 
-    epochs: int = 10
-) -> tuple[nn.Module, float, float, dict]:
-    
-    history: dict[str, list[float]] = {"train_loss": [], "val_loss": [], "train_f1": [], "val_f1": []}
+        model: nn.Module,
+        train_loader: DataLoader,
+        test_loader: DataLoader,
+        criterion: nn.Module,
+        optimizer: torch.optim.Optimizer,
+        device: torch.device,
+        epochs: int = 10) -> tuple[nn.Module, float, float, dict]:
+
+    history: dict[str, list[float]] = {
+        "train_loss": [],
+        "val_loss": [],
+        "train_f1": [],
+        "val_f1": []
+    }
 
     for epoch in range(epochs):
         model.train()
@@ -88,38 +100,47 @@ def train_evaluate_pytorch_model(
                 batch_x = batch_x.to(device)
                 batch_y = batch_y.to(device)
                 predictions = model(batch_x)
-            
+
             loss = criterion(predictions, batch_y)
-            
+
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            
+
             total_train_loss += loss.item()
-            
+
             _, predicted_classes = torch.max(predictions, 1)
             all_train_preds.extend(predicted_classes.cpu().numpy())
             all_train_true.extend(batch_y.cpu().numpy())
-            
+
         avg_train_loss = total_train_loss / len(train_loader)
-        train_f1 = f1_score(all_train_true, all_train_preds, average="macro", zero_division=0)
-        
-        avg_val_loss, val_f1, val_prec = evaluate_model(model, test_loader, criterion, device)
-        
+        train_f1 = f1_score(all_train_true,
+                            all_train_preds,
+                            average="macro",
+                            zero_division=0)
+
+        avg_val_loss, val_f1, val_prec = evaluate_model(
+            model, test_loader, criterion, device)
+
         history["train_loss"].append(avg_train_loss)
         history["val_loss"].append(avg_val_loss)
         history["train_f1"].append(train_f1)
         history["val_f1"].append(val_f1)
-            
-        print(f"Epoch [{epoch+1}/{epochs}] - Train Loss: {avg_train_loss:.4f} | Val Loss: {avg_val_loss:.4f} | Val F1: {val_f1:.4f}")
-        
+
+        print(
+            f"Epoch [{epoch+1}/{epochs}] - Train Loss: {avg_train_loss:.4f} | Val Loss: {avg_val_loss:.4f} | Val F1: {val_f1:.4f}"
+        )
+
     return model, history["val_f1"][-1], val_prec, history
 
 
 class BaselineEmbeddingNet(nn.Module):
+
     def __init__(self, vocab_size, embed_dim, num_classes):
         super(BaselineEmbeddingNet, self).__init__()
-        self.embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embed_dim, padding_idx=0)
+        self.embedding = nn.Embedding(num_embeddings=vocab_size,
+                                      embedding_dim=embed_dim,
+                                      padding_idx=0)
         self.fc = nn.Linear(embed_dim, num_classes)
 
     def forward(self, x):
@@ -127,43 +148,86 @@ class BaselineEmbeddingNet(nn.Module):
         pooled = embedded.mean(dim=1)
         return self.fc(pooled)
 
+
 class HybridRNNFakeNewsNet(nn.Module):
-    def __init__(self, vocab_size: int, embed_dim: int, hidden_dim: int, meta_dim: int, num_classes: int, rnn_type: str = 'GRU', dropout_rate: float = 0.5):
+
+    def __init__(self,
+                 vocab_size: int,
+                 embed_dim: int,
+                 hidden_dim: int,
+                 meta_dim: int,
+                 num_classes: int,
+                 rnn_type: str = 'GRU',
+                 dropout_rate: float = 0.5):
         super(HybridRNNFakeNewsNet, self).__init__()
 
-        self.embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embed_dim, padding_idx=0)
-        
-        self.rnn: nn.Module 
+        self.embedding = nn.Embedding(num_embeddings=vocab_size,
+                                      embedding_dim=embed_dim,
+                                      padding_idx=0)
+
+        self.rnn: nn.Module
         rnn_type = rnn_type.upper()
         if rnn_type == 'GRU':
-            self.rnn = nn.GRU(input_size=embed_dim, hidden_size=hidden_dim, batch_first=True)
+            self.rnn = nn.GRU(input_size=embed_dim,
+                              hidden_size=hidden_dim,
+                              batch_first=True)
         elif rnn_type == 'LSTM':
-            self.rnn = nn.LSTM(input_size=embed_dim, hidden_size=hidden_dim, batch_first=True)
+            self.rnn = nn.LSTM(input_size=embed_dim,
+                               hidden_size=hidden_dim,
+                               batch_first=True)
         elif rnn_type == 'RNN':
-            self.rnn = nn.RNN(input_size=embed_dim, hidden_size=hidden_dim, batch_first=True)
+            self.rnn = nn.RNN(input_size=embed_dim,
+                              hidden_size=hidden_dim,
+                              batch_first=True)
         else:
             raise ValueError("rnn_type must be one of: 'GRU', 'LSTM', 'RNN'")
 
         self.meta_fc = nn.Linear(meta_dim, 32)
         self.meta_relu = nn.ReLU()
-        
+
         self.dropout = nn.Dropout(p=dropout_rate)
-        
+
         self.fc_out = nn.Linear(hidden_dim + 32, num_classes)
 
     def forward(self, text_input, meta_input):
         embedded = self.embedding(text_input)
         rnn_out, hidden = self.rnn(embedded)
-        
+
         if isinstance(self.rnn, nn.LSTM):
-            text_features = hidden[0][-1] 
+            text_features = hidden[0][-1]
         else:
-            text_features = hidden[-1] 
+            text_features = hidden[-1]
 
         meta_features = self.meta_relu(self.meta_fc(meta_input))
 
         combined_features = torch.cat((text_features, meta_features), dim=1)
-        
+
         combined_features = self.dropout(combined_features)
-        
+
+        return self.fc_out(combined_features)
+
+
+class HybridBertFakeNewsNet(nn.Module):
+
+    def __init__(self,
+                 bert_model_name,
+                 meta_dim,
+                 num_classes=6,
+                 dropout_rate=0.4):
+        super(HybridBertFakeNewsNet, self).__init__()
+
+        self.bert = AutoModel.from_pretrained(bert_model_name)
+        self.meta_fc = nn.Linear(meta_dim, 32)
+        self.meta_relu = nn.ReLU()
+        self.dropout = nn.Dropout(p=dropout_rate)
+        self.fc_out = nn.Linear(self.bert.config.hidden_size + 32, num_classes)
+
+    def forward(self, input_ids, attention_mask, meta_input):
+        bert_outputs = self.bert(input_ids=input_ids,
+                                 attention_mask=attention_mask)
+        text_features = bert_outputs.pooler_output
+        meta_features = self.meta_relu(self.meta_fc(meta_input))
+        combined_features = torch.cat((text_features, meta_features), dim=1)
+        combined_features = self.dropout(combined_features)
+
         return self.fc_out(combined_features)

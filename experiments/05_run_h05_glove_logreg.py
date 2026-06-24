@@ -4,7 +4,7 @@ from sklearn.linear_model import LogisticRegression
 from fake_news_detector.features import GensimVectorizer
 from fake_news_detector.modeling import train_evaluate_pipeline
 from fake_news_detector.parse_data import load_and_split_data
-from fake_news_detector.utils import print_evaluation_metrics
+from fake_news_detector.utils import print_evaluation_metrics, save_artifacts
 
 
 def main() -> None:
@@ -26,6 +26,8 @@ def main() -> None:
 
     print_evaluation_metrics("H05 - GloVe + Logistic Regression",
                              test_accuracy, test_macro_f1)
+
+    save_artifacts({"h05_glove_logreg_pipeline.pkl": {"vectorizer": vectorizer, "classifier": model}})
 
 
 if __name__ == '__main__':

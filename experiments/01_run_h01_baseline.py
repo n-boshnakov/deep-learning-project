@@ -2,7 +2,7 @@ import pandas as pd
 from sklearn.dummy import DummyClassifier
 from sklearn.metrics import f1_score, precision_score
 
-from fake_news_detector.utils import print_evaluation_metrics
+from fake_news_detector.utils import print_evaluation_metrics, save_artifacts
 
 
 def main() -> None:
@@ -47,6 +47,8 @@ def main() -> None:
 
     print_evaluation_metrics("H01 - baseline", test_macro_precision,
                              test_macro_f1)
+
+    save_artifacts({"h01_baseline_classifier.pkl": dummy_clf})
 
 
 if __name__ == '__main__':

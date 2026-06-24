@@ -159,8 +159,7 @@ def main():
                              final_macro_prec)
     plot_training_history(history, f"H11_distilbert")
 
-    artifacts_to_save = {"h11_distilbert_weights.pth": model}
-    save_artifacts(artifacts_to_save)
+    save_artifacts({"h11_distilbert_weights.pth": model})
 
 
 if __name__ == "__main__":

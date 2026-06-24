@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 
 from fake_news_detector.modeling import train_evaluate_pytorch_model
 from fake_news_detector.parse_data import LiarDataset, build_vocab, load_and_split_data
-from fake_news_detector.utils import print_evaluation_metrics
+from fake_news_detector.utils import plot_training_history, print_evaluation_metrics, save_artifacts
 
 MAX_VOCAB_SIZE = 15000
 MAX_SEQ_LEN = 50
@@ -84,8 +84,13 @@ def main():
     print_evaluation_metrics("H07 - PyTorch Bidirectional LSTM", macro_f1,
                              macro_prec)
 
-    from fake_news_detector.utils import plot_training_history
     plot_training_history(history, "H07_LSTM")
+
+    artifacts_to_save = {
+        "h07_lstm_weights.pth": trained_model,
+        "h07_lstm_word2idx.pkl": word2idx
+    }
+    save_artifacts(artifacts_to_save)
 
 
 if __name__ == "__main__":

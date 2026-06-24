@@ -160,8 +160,7 @@ def main():
 
     plot_training_history(history, "H10_BERT_Text")
 
-    artifacts_to_save = {"h10_bert_text_weights.pth": model}
-    save_artifacts(artifacts_to_save)
+    save_artifacts({"h10_bert_text_weights.pth": model})
 
 
 if __name__ == "__main__":

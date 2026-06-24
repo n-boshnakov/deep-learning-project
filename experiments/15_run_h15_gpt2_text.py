@@ -121,7 +121,7 @@ def main():
         attn_pdrop=DROPOUT_RATE,
         embd_pdrop=DROPOUT_RATE,
         summary_first_dropout=DROPOUT_RATE)
-    model.config.pad_token_id = model.config.eos_token_id  # Казваме на модела кой е pad токена
+    model.config.pad_token_id = model.config.eos_token_id
     model.to(device)
 
     criterion = nn.CrossEntropyLoss()

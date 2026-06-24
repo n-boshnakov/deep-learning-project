@@ -104,13 +104,12 @@ def main():
 
     plot_training_history(history, f"H09_Hybrid_{RNN_TYPE}_Improved-2")
 
-    # artifacts_to_save = {
-    #     f"h08_hybrid_{RNN_TYPE.lower()}_weights.pth": trained_model,
-    #     f"h08_{RNN_TYPE.lower()}_word2idx.pkl": word2idx,
-    #     "metadata_preprocessor.pkl": preprocessor
-    # }
-
-    # save_artifacts(artifacts_to_save)
+    artifacts_to_save = {
+        f"h09_hybrid_{RNN_TYPE.lower()}_weights.pth": trained_model,
+        f"h09_{RNN_TYPE.lower()}_word2idx.pkl": word2idx,
+        "h09_metadata_preprocessor.pkl": preprocessor
+    }
+    save_artifacts(artifacts_to_save)
 
 
 if __name__ == "__main__":

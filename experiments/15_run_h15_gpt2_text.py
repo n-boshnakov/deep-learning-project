@@ -18,6 +18,7 @@ BATCH_SIZE = 32
 EPOCHS = 4
 LEARNING_RATE = 2e-5
 WEIGHT_DECAY = 0.01
+DROPOUT_RATE = 0.1
 
 # Mac Hardware Acceleration
 if torch.backends.mps.is_available():
@@ -27,7 +28,9 @@ elif torch.cuda.is_available():
 else:
     device = torch.device("cpu")
 
+
 class LiarGptDataset(Dataset):
+
     def __init__(self, texts, labels, tokenizer, max_len):
         self.texts = texts
         self.labels = labels
@@ -58,6 +61,7 @@ class LiarGptDataset(Dataset):
             'labels': torch.tensor(label, dtype=torch.long)
         }
 
+
 def main():
     print(f"Hardware Acceleration: {device}")
     print(f"Active Architecture: GPT-2 Text-Only Classification")
@@ -66,33 +70,64 @@ def main():
     test_path = os.path.join("liar_dataset", "test.tsv")
 
     cols = [
-        "id", "label", "statement", "subjects", "speaker", 
-        "speaker_job", "state_info", "party_affiliation", 
-        "barely_true_counts", "false_counts", "half_true_counts", 
-        "mostly_true_counts", "pants_on_fire_counts", "context"
+        "id", "label", "statement", "subjects", "speaker", "speaker_job",
+        "state_info", "party_affiliation", "barely_true_counts",
+        "false_counts", "half_true_counts", "mostly_true_counts",
+        "pants_on_fire_counts", "context"
     ]
-    df_train = pd.read_csv(train_path, sep='\t', header=None, names=cols, quoting=3).dropna(subset=['statement', 'label'])
-    df_test = pd.read_csv(test_path, sep='\t', header=None, names=cols, quoting=3).dropna(subset=['statement', 'label'])
+    df_train = pd.read_csv(train_path,
+                           sep='\t',
+                           header=None,
+                           names=cols,
+                           quoting=3).dropna(subset=['statement', 'label'])
+    df_test = pd.read_csv(test_path,
+                          sep='\t',
+                          header=None,
+                          names=cols,
+                          quoting=3).dropna(subset=['statement', 'label'])
 
-    label_map = {"pants-fire": 0, "false": 1, "barely-true": 2, "half-true": 3, "mostly-true": 4, "true": 5}
+    label_map = {
+        "pants-fire": 0,
+        "false": 1,
+        "barely-true": 2,
+        "half-true": 3,
+        "mostly-true": 4,
+        "true": 5
+    }
     df_train['label_idx'] = df_train['label'].map(label_map)
     df_test['label_idx'] = df_test['label'].map(label_map)
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     tokenizer.pad_token = tokenizer.eos_token
 
-    train_dataset = LiarGptDataset(df_train['statement'].values, df_train['label_idx'].values, tokenizer, MAX_SEQ_LEN)
-    test_dataset = LiarGptDataset(df_test['statement'].values, df_test['label_idx'].values, tokenizer, MAX_SEQ_LEN)
+    train_dataset = LiarGptDataset(df_train['statement'].values,
+                                   df_train['label_idx'].values, tokenizer,
+                                   MAX_SEQ_LEN)
+    test_dataset = LiarGptDataset(df_test['statement'].values,
+                                  df_test['label_idx'].values, tokenizer,
+                                  MAX_SEQ_LEN)
 
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    train_loader = DataLoader(train_dataset,
+                              batch_size=BATCH_SIZE,
+                              shuffle=True)
+    test_loader = DataLoader(test_dataset,
+                             batch_size=BATCH_SIZE,
+                             shuffle=False)
 
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, num_labels=6)
-    model.config.pad_token_id = model.config.eos_token_id # Казваме на модела кой е pad токена
+    model = AutoModelForSequenceClassification.from_pretrained(
+        MODEL_NAME,
+        num_labels=6,
+        resid_pdrop=DROPOUT_RATE,
+        attn_pdrop=DROPOUT_RATE,
+        embd_pdrop=DROPOUT_RATE,
+        summary_first_dropout=DROPOUT_RATE)
+    model.config.pad_token_id = model.config.eos_token_id  # Казваме на модела кой е pad токена
     model.to(device)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
+    optimizer = optim.AdamW(model.parameters(),
+                            lr=LEARNING_RATE,
+                            weight_decay=WEIGHT_DECAY)
 
     history = {'train_loss': [], 'val_loss': [], 'train_f1': [], 'val_f1': []}
     total_start_time = time.time()
@@ -112,7 +147,9 @@ def main():
             attention_mask = batch['attention_mask'].to(device)
             labels = batch['labels'].to(device)
 
-            outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
+            outputs = model(input_ids=input_ids,
+                            attention_mask=attention_mask,
+                            labels=labels)
             loss = outputs.loss
             logits = outputs.logits
 
@@ -125,7 +162,9 @@ def main():
             train_labels_epoch.extend(labels.cpu().numpy())
 
         avg_train_loss = total_train_loss / len(train_loader)
-        train_f1 = f1_score(train_labels_epoch, train_preds_epoch, average='macro')
+        train_f1 = f1_score(train_labels_epoch,
+                            train_preds_epoch,
+                            average='macro')
 
         model.eval()
         total_val_loss = 0
@@ -138,7 +177,9 @@ def main():
                 attention_mask = batch['attention_mask'].to(device)
                 labels = batch['labels'].to(device)
 
-                outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
+                outputs = model(input_ids=input_ids,
+                                attention_mask=attention_mask,
+                                labels=labels)
                 loss = outputs.loss
                 logits = outputs.logits
                 total_val_loss += loss.item()
@@ -157,18 +198,25 @@ def main():
 
         epoch_time = time.time() - epoch_start_time
         mins, secs = divmod(int(epoch_time), 60)
-        print(f"Epoch [{epoch}/{EPOCHS}] - Train Loss: {avg_train_loss:.4f} | Val Loss: {avg_val_loss:.4f} | Train F1: {train_f1:.4f} | Val F1: {val_f1:.4f} | Time: {mins}m {secs}s")
+        print(
+            f"Epoch [{epoch}/{EPOCHS}] - Train Loss: {avg_train_loss:.4f} | Val Loss: {avg_val_loss:.4f} | Train F1: {train_f1:.4f} | Val F1: {val_f1:.4f} | Time: {mins}m {secs}s"
+        )
 
     total_time = time.time() - total_start_time
     total_mins, total_secs = divmod(int(total_time), 60)
 
-    final_macro_prec = precision_score(all_labels, all_preds, average='macro', zero_division=0)
-    
+    final_macro_prec = precision_score(all_labels,
+                                       all_preds,
+                                       average='macro',
+                                       zero_division=0)
+
     print(f"\nTotal Training Time: {total_mins}m {total_secs}s")
-    print_evaluation_metrics("H15 - GPT-2 Base", history['val_f1'][-1], final_macro_prec)
+    print_evaluation_metrics("H15 - GPT-2 Base", history['val_f1'][-1],
+                             final_macro_prec)
     plot_training_history(history, "H15_GPT2_Base")
-    
+
     save_artifacts({"h15_gpt2_base_weights.pth": model})
+
 
 if __name__ == "__main__":
     main()

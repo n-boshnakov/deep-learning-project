@@ -7,7 +7,8 @@ import streamlit as st
 import torch
 from transformers import AutoTokenizer
 
-from fake_news_detector.modeling import BaselineEmbeddingNet, HybridBertFakeNewsNet, HybridRNNFakeNewsNet
+from fake_news_detector.modeling import (BaselineEmbeddingNet, HybridBertFakeNewsNet,
+                                         HybridRNNFakeNewsNet)
 
 # Supported active models: "h04_sklearn", "h06_baseline", "h08_hybrid_gru", "h14_roberta"
 ACTIVE_MODEL_TYPE = "h14_roberta"

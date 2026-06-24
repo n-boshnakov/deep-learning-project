@@ -1,15 +1,13 @@
 import os
-import time
 
 import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from sklearn.metrics import f1_score, precision_score
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
 
-from fake_news_detector.modeling import HybridBertFakeNewsNet
+from fake_news_detector.modeling import HybridBertFakeNewsNet, train_evaluate_transformer_model
 from fake_news_detector.parse_data import (CAT_COLS, LABEL_MAP, LIAR_COLUMNS, NUMERIC_COLS,
                                            LiarHybridBertDataset, MetadataPreprocessor)
 from fake_news_detector.utils import (plot_training_history, print_evaluation_metrics,
@@ -91,92 +89,17 @@ def main():
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE)
 
-    history = {'train_loss': [], 'val_loss': [], 'train_f1': [], 'val_f1': []}
-    total_start_time = time.time()
+    model, val_f1, final_macro_prec, history = train_evaluate_transformer_model(
+        model,
+        train_loader,
+        test_loader,
+        optimizer,
+        device,
+        epochs=EPOCHS,
+        criterion=criterion)
 
-    for epoch in range(1, EPOCHS + 1):
-        epoch_start_time = time.time()
-
-        model.train()
-        total_train_loss = 0
-        train_preds_epoch = []
-        train_labels_epoch = []
-
-        for batch in train_loader:
-            optimizer.zero_grad()
-
-            input_ids = batch['input_ids'].to(device)
-            attention_mask = batch['attention_mask'].to(device)
-            meta_features = batch['meta_features'].to(device)
-            labels = batch['labels'].to(device)
-
-            logits = model(input_ids=input_ids,
-                           attention_mask=attention_mask,
-                           meta_input=meta_features)
-            loss = criterion(logits, labels)
-
-            loss.backward()
-            optimizer.step()
-            total_train_loss += loss.item()
-
-            preds = torch.argmax(logits, dim=1)
-            train_preds_epoch.extend(preds.detach().cpu().numpy())
-            train_labels_epoch.extend(labels.cpu().numpy())
-
-        avg_train_loss = total_train_loss / len(train_loader)
-        train_f1 = f1_score(train_labels_epoch,
-                            train_preds_epoch,
-                            average='macro')
-
-        model.eval()
-        total_val_loss = 0
-        all_preds = []
-        all_labels = []
-
-        with torch.no_grad():
-            for batch in test_loader:
-                input_ids = batch['input_ids'].to(device)
-                attention_mask = batch['attention_mask'].to(device)
-                meta_features = batch['meta_features'].to(device)
-                labels = batch['labels'].to(device)
-
-                logits = model(input_ids=input_ids,
-                               attention_mask=attention_mask,
-                               meta_input=meta_features)
-                loss = criterion(logits, labels)
-                total_val_loss += loss.item()
-
-                preds = torch.argmax(logits, dim=1)
-                all_preds.extend(preds.cpu().numpy())
-                all_labels.extend(labels.cpu().numpy())
-
-        avg_val_loss = total_val_loss / len(test_loader)
-        val_f1 = f1_score(all_labels, all_preds, average='macro')
-
-        history['train_loss'].append(avg_train_loss)
-        history['val_loss'].append(avg_val_loss)
-        history['train_f1'].append(train_f1)
-        history['val_f1'].append(val_f1)
-
-        epoch_time = time.time() - epoch_start_time
-        mins, secs = divmod(int(epoch_time), 60)
-        print(
-            f"Epoch [{epoch}/{EPOCHS}] - Train Loss: {avg_train_loss:.4f} | Val Loss: {avg_val_loss:.4f} | Train F1: {train_f1:.4f} | Val F1: {val_f1:.4f} | Time: {mins}m {secs}s"
-        )
-
-    total_time = time.time() - total_start_time
-    total_mins, total_secs = divmod(int(total_time), 60)
-
-    final_macro_prec = precision_score(all_labels,
-                                       all_preds,
-                                       average='macro',
-                                       zero_division=0)
-
-    print(f"\nTotal Training Time: {total_mins}m {total_secs}s")
-    print_evaluation_metrics("H12 - Hybrid BERT", history['val_f1'][-1],
-                             final_macro_prec)
+    print_evaluation_metrics("H12 - Hybrid BERT", val_f1, final_macro_prec)
     plot_training_history(history, "H12_Hybrid_BERT")
-
     artifacts_to_save = {
         "h12_hybrid_bert_weights.pth": model,
         "h12_metadata_preprocessor.pkl": preprocessor

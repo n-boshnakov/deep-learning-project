@@ -1,3 +1,6 @@
+import time
+from typing import Optional
+
 import pandas as pd
 import torch
 import torch.nn as nn
@@ -132,6 +135,136 @@ def train_evaluate_pytorch_model(
         )
 
     return model, history["val_f1"][-1], val_prec, history
+
+
+def train_evaluate_transformer_model(
+    model: nn.Module,
+    train_loader: DataLoader,
+    test_loader: DataLoader,
+    optimizer: torch.optim.Optimizer,
+    device: torch.device,
+    epochs: int = 4,
+    criterion: Optional[nn.Module] = None
+) -> tuple[nn.Module, float, float, dict]:
+    """Train and evaluate a transformer model for one or more epochs.
+
+    Supports two batch formats:
+    - Text-only (3 elements): input_ids, attention_mask, labels
+      Model must return an object with .loss and .logits (HuggingFace style).
+    - Hybrid (4 elements): input_ids, attention_mask, meta_features, labels
+      Model must accept (input_ids, attention_mask, meta_input) and return
+      raw logits. Requires criterion to be provided.
+    """
+    history: dict[str, list[float]] = {
+        "train_loss": [],
+        "val_loss": [],
+        "train_f1": [],
+        "val_f1": []
+    }
+
+    for epoch in range(1, epochs + 1):
+        epoch_start = time.time()
+
+        model.train()
+        total_train_loss = 0.0
+        train_preds: list[int] = []
+        train_labels: list[int] = []
+
+        for batch in train_loader:
+            optimizer.zero_grad()
+
+            if len(batch) == 4:
+                assert criterion is not None, "criterion is required for hybrid batches"
+                input_ids, attention_mask, meta_features, labels = batch
+                input_ids = input_ids.to(device)
+                attention_mask = attention_mask.to(device)
+                meta_features = meta_features.to(device)
+                labels = labels.to(device)
+                logits = model(input_ids=input_ids,
+                               attention_mask=attention_mask,
+                               meta_input=meta_features)
+                loss = criterion(logits, labels)
+            else:
+                input_ids, attention_mask, labels = batch
+                input_ids = input_ids.to(device)
+                attention_mask = attention_mask.to(device)
+                labels = labels.to(device)
+                outputs = model(input_ids=input_ids,
+                                attention_mask=attention_mask,
+                                labels=labels)
+                loss = outputs.loss
+                logits = outputs.logits
+
+            loss.backward()
+            optimizer.step()
+            total_train_loss += loss.item()
+
+            preds = torch.argmax(logits, dim=1)
+            train_preds.extend(preds.detach().cpu().numpy())
+            train_labels.extend(labels.cpu().numpy())
+
+        avg_train_loss = total_train_loss / len(train_loader)
+        train_f1 = f1_score(train_labels,
+                            train_preds,
+                            average='macro',
+                            zero_division=0)
+
+        model.eval()
+        total_val_loss = 0.0
+        val_preds: list[int] = []
+        val_labels: list[int] = []
+
+        with torch.no_grad():
+            for batch in test_loader:
+                if len(batch) == 4:
+                    assert criterion is not None, "criterion is required for hybrid batches"
+                    input_ids, attention_mask, meta_features, labels = batch
+                    input_ids = input_ids.to(device)
+                    attention_mask = attention_mask.to(device)
+                    meta_features = meta_features.to(device)
+                    labels = labels.to(device)
+                    logits = model(input_ids=input_ids,
+                                   attention_mask=attention_mask,
+                                   meta_input=meta_features)
+                    loss = criterion(logits, labels)
+                else:
+                    input_ids, attention_mask, labels = batch
+                    input_ids = input_ids.to(device)
+                    attention_mask = attention_mask.to(device)
+                    labels = labels.to(device)
+                    outputs = model(input_ids=input_ids,
+                                    attention_mask=attention_mask,
+                                    labels=labels)
+                    loss = outputs.loss
+                    logits = outputs.logits
+
+                total_val_loss += loss.item()
+                preds = torch.argmax(logits, dim=1)
+                val_preds.extend(preds.cpu().numpy())
+                val_labels.extend(labels.cpu().numpy())
+
+        avg_val_loss = total_val_loss / len(test_loader)
+        val_f1 = f1_score(val_labels,
+                          val_preds,
+                          average='macro',
+                          zero_division=0)
+
+        history["train_loss"].append(avg_train_loss)
+        history["val_loss"].append(avg_val_loss)
+        history["train_f1"].append(train_f1)
+        history["val_f1"].append(val_f1)
+
+        epoch_time = time.time() - epoch_start
+        mins, secs = divmod(int(epoch_time), 60)
+        print(
+            f"Epoch [{epoch}/{epochs}] - Train Loss: {avg_train_loss:.4f} | Val Loss: {avg_val_loss:.4f} | Train F1: {train_f1:.4f} | Val F1: {val_f1:.4f} | Time: {mins}m {secs}s"
+        )
+
+    final_prec = precision_score(val_labels,
+                                 val_preds,
+                                 average='macro',
+                                 zero_division=0)
+    return model, history["val_f1"][-1], final_prec, history
 
 
 class BaselineEmbeddingNet(nn.Module):

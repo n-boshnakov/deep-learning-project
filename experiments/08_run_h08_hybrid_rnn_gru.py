@@ -8,8 +8,7 @@ from torch.utils.data import DataLoader
 from fake_news_detector.modeling import HybridRNNFakeNewsNet, train_evaluate_pytorch_model
 from fake_news_detector.parse_data import (LiarHybridDataset, MetadataPreprocessor, build_vocab,
                                            load_hybrid_data)
-from fake_news_detector.utils import (print_evaluation_metrics,
-                                      save_artifacts)
+from fake_news_detector.utils import print_evaluation_metrics, save_artifacts
 
 MAX_VOCAB_SIZE = 15000
 MAX_SEQ_LEN = 50

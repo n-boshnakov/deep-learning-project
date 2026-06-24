@@ -76,7 +76,7 @@ class TestParseData(unittest.TestCase):
 
 class TestParseDataDeepLearning(unittest.TestCase):
 
-    def test_when_building_vocab_then_returns_correct_dict_with_special_tokens(
+    def test_when_building_vocab_then_returns_dict_with_pad_at_index_zero_and_unk_at_index_one(
             self):
         # Arrange
         texts = pd.Series(["hello world", "hello test"])
@@ -94,7 +94,7 @@ class TestParseDataDeepLearning(unittest.TestCase):
         self.assertEqual(vocab["<UNK>"], expected_unk_idx)
         self.assertIn("hello", vocab)
 
-    def test_when_text_to_indices_called_then_pads_and_truncates_correctly(
+    def test_when_text_to_indices_called_then_short_sequences_are_padded_and_long_sequences_are_truncated(
             self):
         # Arrange
         texts = pd.Series(["hello world", "a very long sentence to truncate"])
@@ -112,7 +112,7 @@ class TestParseDataDeepLearning(unittest.TestCase):
         self.assertEqual(actual_tensor[0].tolist(), expected_padded)
         self.assertEqual(actual_tensor[1].tolist(), expected_truncated)
 
-    def test_when_liardataset_instantiated_then_returns_valid_tensors(self):
+    def test_when_liardataset_instantiated_then_returns_long_tensor_for_features_and_label_tensor_per_item(self):
         # Arrange
         x = pd.Series(["fake news", "real news"])
         y = pd.Series(["pants-fire", "true"])
@@ -158,7 +158,7 @@ class TestHybridDataDeepLearning(unittest.TestCase):
             "real": 4
         }
 
-    def test_when_preprocessing_metadata_then_returns_valid_tensor(self):
+    def test_when_preprocessing_metadata_then_returns_float32_tensor_with_more_columns_than_numeric_inputs(self):
         # Arrange
         preprocessor = parse_data.MetadataPreprocessor()
 
@@ -224,7 +224,7 @@ class TestTransformerDatasets(unittest.TestCase):
         self.tokenizer = MockTokenizer()
         self.max_len = 8
 
-    def test_when_transformer_dataset_instantiated_then_returns_valid_dict(
+    def test_when_transformer_dataset_instantiated_then_returns_dict_with_input_ids_attention_mask_and_labels(
             self):
         # Arrange
         dataset = parse_data.LiarTransformerDataset(self.texts, self.labels,

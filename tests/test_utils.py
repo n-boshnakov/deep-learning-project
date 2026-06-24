@@ -12,7 +12,7 @@ from fake_news_detector.utils import (plot_training_history, print_evaluation_me
 class TestUtils(unittest.TestCase):
 
     @patch('builtins.print')
-    def test_when_print_evaluation_metrics_called_then_prints_correctly(
+    def test_when_print_evaluation_metrics_called_then_prints_experiment_name_precision_and_f1_on_three_lines(
             self, mock_print):
         # Arrange
         experiment_name = "H01 - baseline"
@@ -55,7 +55,7 @@ class TestPlotTrainingHistoryUtils(BaseFileTest):
         self.expected_path = os.path.join(self.base_dir,
                                           "Test_Experiment_history.png")
 
-    def test_when_valid_history_passed_then_saves_plot_successfully(self):
+    def test_when_history_with_loss_and_f1_passed_then_saves_png_plot_to_disk(self):
         # Arrange
         dummy_history = {
             "train_loss": [0.8, 0.5],
@@ -80,7 +80,7 @@ class TestSaveArtifacts(BaseFileTest):
         self.vocab_filename = "test_vocab.pkl"
         self.prep_filename = "test_prep.pkl"
 
-    def test_when_saving_various_artifacts_then_files_are_created_correctly(
+    def test_when_saving_various_artifacts_then_each_artifact_file_exists_on_disk(
             self):
         dummy_model = nn.Linear(10, 2)
         dummy_vocab = {"<PAD>": 0, "test": 1}

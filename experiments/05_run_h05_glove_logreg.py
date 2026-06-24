@@ -1,4 +1,3 @@
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 
 from fake_news_detector.features import GensimVectorizer

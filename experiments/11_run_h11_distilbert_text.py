@@ -5,7 +5,7 @@ import pandas as pd
 import torch
 import torch.optim as optim
 from sklearn.metrics import f1_score, precision_score
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from fake_news_detector.parse_data import LABEL_MAP, LiarTransformerDataset

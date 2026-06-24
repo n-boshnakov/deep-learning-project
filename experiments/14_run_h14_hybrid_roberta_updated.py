@@ -6,8 +6,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import f1_score, precision_score
-from torch.utils.data import DataLoader, Dataset
-from transformers import AutoModel, AutoTokenizer
+from torch.utils.data import DataLoader
+from transformers import AutoTokenizer
 
 from fake_news_detector.modeling import HybridBertFakeNewsNet
 from fake_news_detector.parse_data import (CAT_COLS, LABEL_MAP, LIAR_COLUMNS, NUMERIC_COLS,

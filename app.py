@@ -143,6 +143,61 @@ def preprocess_text_pytorch(text: str, word2idx: dict) -> torch.Tensor:
     return torch.tensor(tokens, dtype=torch.long).unsqueeze(0)
 
 
+def predict(statement: str, meta_df=None) -> str:
+    """Run inference with the currently active model. meta_df required for hybrid models."""
+    if ACTIVE_MODEL_TYPE == "h04_sklearn":
+        sk_vectorizer, sk_classifier = load_h04_pipeline()
+        return sk_classifier.predict(sk_vectorizer.transform([statement]))[0]
+
+    elif ACTIVE_MODEL_TYPE == "h06_baseline":
+        pt_model, pt_vocab = load_h06_pipeline()
+        with torch.no_grad():
+            out = pt_model(preprocess_text_pytorch(statement, pt_vocab))
+        return IDX_TO_LABEL.get(int(torch.argmax(out, dim=1).item()),
+                                "Unknown")
+
+    elif ACTIVE_MODEL_TYPE == "h08_hybrid_gru":
+        pt_model, pt_vocab, preprocessor = load_h08_pipeline()
+        with torch.no_grad():
+            out = pt_model(preprocess_text_pytorch(statement, pt_vocab),
+                           preprocessor.transform(meta_df))
+        return IDX_TO_LABEL.get(int(torch.argmax(out, dim=1).item()),
+                                "Unknown")
+
+    elif ACTIVE_MODEL_TYPE == "h14_roberta":
+        pt_model, preprocessor, tokenizer = load_h14_pipeline()
+        encoding = tokenizer(statement,
+                             max_length=H14_MAX_SEQ_LEN,
+                             padding="max_length",
+                             truncation=True,
+                             return_tensors="pt")
+        with torch.no_grad():
+            out = pt_model(input_ids=encoding["input_ids"],
+                           attention_mask=encoding["attention_mask"],
+                           meta_input=preprocessor.transform(meta_df))
+        return IDX_TO_LABEL.get(int(torch.argmax(out, dim=1).item()),
+                                "Unknown")
+
+    raise ValueError(f"Unknown model type: {ACTIVE_MODEL_TYPE}")
+
+
+def meta_df_from_parts(speaker, party, state, job, subjects, context, barely,
+                       false_cnt, half, mostly, pants) -> pd.DataFrame:
+    return pd.DataFrame([{
+        "barely_true_counts": float(barely),
+        "false_counts": float(false_cnt),
+        "half_true_counts": float(half),
+        "mostly_true_counts": float(mostly),
+        "pants_on_fire_counts": float(pants),
+        "party_affiliation": party.lower(),
+        "state_info": state.lower(),
+        "speaker_job": job.lower(),
+        "speaker": speaker.lower(),
+        "context": context.lower(),
+        "subjects": subjects.lower(),
+    }])
+
+
 def main():
     st.set_page_config(page_title="Fake News Detector",
                        page_icon="🕵️‍♂️",
@@ -152,7 +207,7 @@ def main():
     st.subheader("Text Classification System")
 
     st.write("""
-    This project uses machine learning algorithms to predict the credibility of a given statement. 
+    This project uses machine learning algorithms to predict the credibility of a given statement.
     The system is trained on the popular **LIAR** dataset, which categorizes short statements into 6 degrees of truthfulness.
     """)
 
@@ -203,107 +258,126 @@ def main():
 
     st.write("---")
 
-    user_input = st.text_area("Enter statement for classification:",
-                              height=100)
+    tab_manual, tab_tsv = st.tabs(["Manual Input", "Paste Dataset Row"])
 
-    meta_df = None
-    if ACTIVE_MODEL_TYPE in ("h08_hybrid_gru", "h14_roberta"):
-        st.markdown("#### Additional Context (Metadata)")
+    # ── Tab 1: manual form ────────────────────────────────────────────────────
+    with tab_manual:
+        user_input = st.text_area("Enter statement for classification:",
+                                  height=100)
+
+        meta_df = None
+        if ACTIVE_MODEL_TYPE in ("h08_hybrid_gru", "h14_roberta"):
+            st.markdown("#### Additional Context (Metadata)")
+            st.markdown(
+                "This model requires context about the speaker to make an accurate prediction."
+            )
+
+            col1, col2 = st.columns(2)
+            with col1:
+                speaker = st.text_input("Speaker Name", value="donald-trump")
+                party = st.text_input("Party Affiliation", value="republican")
+                state = st.text_input("State", value="New York")
+                job = st.text_input("Speaker Job", value="President-Elect")
+            with col2:
+                subjects = st.text_input("Subject(s)", value="economy, jobs")
+                context = st.text_input("Context (e.g. debate, tweet)",
+                                        value="tweet")
+
+            st.markdown("**Historical Lie Count (Optional / Known History)**")
+            col_c1, col_c2, col_c3, col_c4, col_c5 = st.columns(5)
+            barely = col_c1.number_input("Barely True", min_value=0, value=0)
+            false_cnt = col_c2.number_input("False", min_value=0, value=0)
+            half = col_c3.number_input("Half True", min_value=0, value=0)
+            mostly = col_c4.number_input("Mostly True", min_value=0, value=0)
+            pants = col_c5.number_input("Pants on Fire", min_value=0, value=0)
+
+            meta_df = meta_df_from_parts(speaker, party, state, job, subjects,
+                                         context, barely, false_cnt, half,
+                                         mostly, pants)
+
+        if st.button("Classify Statement",
+                     type="primary",
+                     use_container_width=True,
+                     key="btn_manual"):
+            if not user_input.strip():
+                st.warning("Please enter a statement before classifying.")
+            else:
+                with st.spinner("Analyzing..."):
+                    try:
+                        label = predict(user_input, meta_df)
+                        st.subheader("Classification Result")
+                        st.info(f"**Prediction:** `{label}`")
+                    except Exception as e:
+                        st.error(
+                            f"An error occurred during classification: {e}")
+
+    # ── Tab 2: paste TSV rows ─────────────────────────────────────────────────
+    # TSV columns: id, label, statement, subjects, speaker, job, state, party,
+    #              barely_true, false, half_true, mostly_true, pants_fire, context
+    with tab_tsv:
         st.markdown(
-            "This model requires context about the speaker to make an accurate prediction."
-        )
+            "Paste one or more rows from `valid.tsv` / `test.tsv` / `train.tsv`. "
+            "The label column is ignored — the model predicts from scratch.")
+        raw_rows = st.text_area(
+            "TSV rows:",
+            height=150,
+            placeholder="12134.json\tbarely-true\tWe have less Americans…\t…")
+        if st.button("Classify Rows",
+                     type="primary",
+                     use_container_width=True,
+                     key="btn_tsv"):
+            lines = [l for l in raw_rows.strip().splitlines() if l.strip()]
+            if not lines:
+                st.warning("Paste at least one TSV row.")
+            else:
+                results = []
+                with st.spinner(f"Classifying {len(lines)} row(s)…"):
+                    for line in lines:
+                        cols = line.split("\t")
+                        if len(cols) < 14:
+                            results.append({
+                                "Statement": line[:60] + "…",
+                                "True": "—",
+                                "Predicted": f"parse error ({len(cols)} cols)",
+                                "Match": "—",
+                            })
+                            continue
+                        true_label = cols[1]
+                        statement = cols[2]
+                        row_meta_df = meta_df_from_parts(
+                            speaker=cols[4],
+                            party=cols[7],
+                            state=cols[6],
+                            job=cols[5],
+                            subjects=cols[3],
+                            context=cols[13],
+                            barely=cols[8] or 0,
+                            false_cnt=cols[9] or 0,
+                            half=cols[10] or 0,
+                            mostly=cols[11] or 0,
+                            pants=cols[12] or 0,
+                        ) if ACTIVE_MODEL_TYPE in ("h08_hybrid_gru",
+                                                   "h14_roberta") else None
+                        try:
+                            predicted = predict(statement, row_meta_df)
+                            match = "✅" if predicted == true_label else "❌"
+                        except Exception as e:
+                            predicted, match = str(e), "—"
+                        results.append({
+                            "Statement":
+                            statement[:80] +
+                            ("…" if len(statement) > 80 else ""),
+                            "True":
+                            true_label,
+                            "Predicted":
+                            predicted,
+                            "Match":
+                            match,
+                        })
 
-        col1, col2 = st.columns(2)
-        with col1:
-            speaker = st.text_input("Speaker Name", value="donald-trump")
-            party = st.text_input("Party Affiliation", value="republican")
-            state = st.text_input("State", value="New York")
-            job = st.text_input("Speaker Job", value="President-Elect")
-        with col2:
-            subjects = st.text_input("Subject(s)", value="economy, jobs")
-            context = st.text_input("Context (e.g. debate, tweet)",
-                                    value="tweet")
-
-        st.markdown("**Historical Lie Count (Optional / Known History)**")
-        col_c1, col_c2, col_c3, col_c4, col_c5 = st.columns(5)
-        barely = col_c1.number_input("Barely True", min_value=0, value=0)
-        false_cnt = col_c2.number_input("False", min_value=0, value=0)
-        half = col_c3.number_input("Half True", min_value=0, value=0)
-        mostly = col_c4.number_input("Mostly True", min_value=0, value=0)
-        pants = col_c5.number_input("Pants on Fire", min_value=0, value=0)
-
-        meta_df = pd.DataFrame([{
-            "barely_true_counts": float(barely),
-            "false_counts": float(false_cnt),
-            "half_true_counts": float(half),
-            "mostly_true_counts": float(mostly),
-            "pants_on_fire_counts": float(pants),
-            "party_affiliation": party.lower(),
-            "state_info": state.lower(),
-            "speaker_job": job.lower(),
-            "speaker": speaker.lower(),
-            "context": context.lower(),
-            "subjects": subjects.lower()
-        }])
-
-    st.write("---")
-
-    if st.button("Classify Statement",
-                 type="primary",
-                 use_container_width=True):
-        if not user_input.strip():
-            st.warning(
-                "Please enter a statement before starting the classification.")
-            return
-
-        with st.spinner('Analyzing text and data...'):
-            try:
-                if ACTIVE_MODEL_TYPE == "h04_sklearn":
-                    vectorized_input = sk_vectorizer.transform([user_input])
-                    prediction_label = sk_classifier.predict(
-                        vectorized_input)[0]
-
-                elif ACTIVE_MODEL_TYPE == "h06_baseline":
-                    input_tensor = preprocess_text_pytorch(
-                        user_input, pt_vocab)
-                    with torch.no_grad():
-                        output = pt_model(input_tensor)
-                        prediction_idx = torch.argmax(output, dim=1).item()
-                    prediction_label = IDX_TO_LABEL.get(
-                        prediction_idx, "Unknown")
-
-                elif ACTIVE_MODEL_TYPE == "h08_hybrid_gru":
-                    text_tensor = preprocess_text_pytorch(user_input, pt_vocab)
-                    meta_tensor = preprocessor.transform(meta_df)
-
-                    with torch.no_grad():
-                        output = pt_model(text_tensor, meta_tensor)
-                        prediction_idx = torch.argmax(output, dim=1).item()
-                    prediction_label = IDX_TO_LABEL.get(
-                        prediction_idx, "Unknown")
-
-                elif ACTIVE_MODEL_TYPE == "h14_roberta":
-                    encoding = tokenizer(user_input,
-                                         max_length=H14_MAX_SEQ_LEN,
-                                         padding="max_length",
-                                         truncation=True,
-                                         return_tensors="pt")
-                    meta_tensor = preprocessor.transform(meta_df)
-
-                    with torch.no_grad():
-                        output = pt_model(
-                            input_ids=encoding["input_ids"],
-                            attention_mask=encoding["attention_mask"],
-                            meta_input=meta_tensor)
-                        prediction_idx = torch.argmax(output, dim=1).item()
-                    prediction_label = IDX_TO_LABEL.get(
-                        prediction_idx, "Unknown")
-
-                st.subheader("Classification Result")
-                st.info(f"**Prediction:** `{prediction_label}`")
-
-            except Exception as e:
-                st.error(f"An error occurred during classification: {e}")
+                correct = sum(1 for r in results if r["Match"] == "✅")
+                st.markdown(f"**{correct} / {len(results)} correct**")
+                st.dataframe(results, use_container_width=True)
 
 
 if __name__ == "__main__":

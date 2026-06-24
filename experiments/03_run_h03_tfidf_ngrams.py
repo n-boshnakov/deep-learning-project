@@ -25,7 +25,12 @@ def main() -> None:
     print_evaluation_metrics("H03 - TF-IDF (N-grams + StopWords) + LogReg",
                              test_accuracy, test_macro_f1)
 
-    save_artifacts({"h03_tfidf_ngrams_pipeline.pkl": {"vectorizer": vectorizer, "classifier": model}})
+    save_artifacts({
+        "h03_tfidf_ngrams_pipeline.pkl": {
+            "vectorizer": vectorizer,
+            "classifier": model
+        }
+    })
 
 
 if __name__ == '__main__':

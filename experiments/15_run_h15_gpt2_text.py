@@ -9,6 +9,7 @@ from sklearn.metrics import f1_score, precision_score
 from torch.utils.data import DataLoader, Dataset
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
+from fake_news_detector.parse_data import LABEL_MAP, LIAR_COLUMNS
 from fake_news_detector.utils import (plot_training_history, print_evaluation_metrics,
                                       save_artifacts)
 
@@ -69,33 +70,19 @@ def main():
     train_path = os.path.join("liar_dataset", "train.tsv")
     test_path = os.path.join("liar_dataset", "test.tsv")
 
-    cols = [
-        "id", "label", "statement", "subjects", "speaker", "speaker_job",
-        "state_info", "party_affiliation", "barely_true_counts",
-        "false_counts", "half_true_counts", "mostly_true_counts",
-        "pants_on_fire_counts", "context"
-    ]
     df_train = pd.read_csv(train_path,
                            sep='\t',
                            header=None,
-                           names=cols,
+                           names=LIAR_COLUMNS,
                            quoting=3).dropna(subset=['statement', 'label'])
     df_test = pd.read_csv(test_path,
                           sep='\t',
                           header=None,
-                          names=cols,
+                          names=LIAR_COLUMNS,
                           quoting=3).dropna(subset=['statement', 'label'])
 
-    label_map = {
-        "pants-fire": 0,
-        "false": 1,
-        "barely-true": 2,
-        "half-true": 3,
-        "mostly-true": 4,
-        "true": 5
-    }
-    df_train['label_idx'] = df_train['label'].map(label_map)
-    df_test['label_idx'] = df_test['label'].map(label_map)
+    df_train['label_idx'] = df_train['label'].map(LABEL_MAP)
+    df_test['label_idx'] = df_test['label'].map(LABEL_MAP)
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     tokenizer.pad_token = tokenizer.eos_token

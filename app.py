@@ -9,6 +9,7 @@ from transformers import AutoTokenizer
 
 from fake_news_detector.modeling import (BaselineEmbeddingNet, HybridBertFakeNewsNet,
                                          HybridRNNFakeNewsNet)
+from fake_news_detector.parse_data import LABEL_MAP
 
 # Supported active models: "h04_sklearn", "h06_baseline", "h08_hybrid_gru", "h14_roberta"
 ACTIVE_MODEL_TYPE = "h14_roberta"
@@ -19,14 +20,7 @@ RNN_HIDDEN_DIM = 64
 H14_MODEL_NAME = "roberta-base"
 H14_MAX_SEQ_LEN = 64
 
-IDX_TO_LABEL = {
-    0: "pants-fire",
-    1: "false",
-    2: "barely-true",
-    3: "half-true",
-    4: "mostly-true",
-    5: "true"
-}
+IDX_TO_LABEL = {v: k for k, v in LABEL_MAP.items()}
 
 
 @st.cache_resource

@@ -23,7 +23,12 @@ def main() -> None:
     print_evaluation_metrics("H02 - TF-IDF + Logistic Regression",
                              test_accuracy, test_macro_f1)
 
-    save_artifacts({"h02_tfidf_logreg_pipeline.pkl": {"vectorizer": vectorizer, "classifier": model}})
+    save_artifacts({
+        "h02_tfidf_logreg_pipeline.pkl": {
+            "vectorizer": vectorizer,
+            "classifier": model
+        }
+    })
 
 
 if __name__ == '__main__':

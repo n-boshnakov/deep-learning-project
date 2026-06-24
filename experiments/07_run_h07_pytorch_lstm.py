@@ -7,7 +7,8 @@ from torch.utils.data import DataLoader
 
 from fake_news_detector.modeling import train_evaluate_pytorch_model
 from fake_news_detector.parse_data import LiarDataset, build_vocab, load_and_split_data
-from fake_news_detector.utils import plot_training_history, print_evaluation_metrics, save_artifacts
+from fake_news_detector.utils import (plot_training_history, print_evaluation_metrics,
+                                      save_artifacts)
 
 MAX_VOCAB_SIZE = 15000
 MAX_SEQ_LEN = 50

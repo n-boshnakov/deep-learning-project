@@ -2,26 +2,20 @@ import pandas as pd
 from sklearn.dummy import DummyClassifier
 from sklearn.metrics import f1_score, precision_score
 
+from fake_news_detector.parse_data import LIAR_COLUMNS
 from fake_news_detector.utils import print_evaluation_metrics, save_artifacts
 
 
 def main() -> None:
-    columns = [
-        "id", "label", "statement", "subjects", "speaker", "speaker_job",
-        "state_info", "party_affiliation", "barely_true_counts",
-        "false_counts", "half_true_counts", "mostly_true_counts",
-        "pants_on_fire_counts", "context"
-    ]
-
     train_df = pd.read_csv("liar_dataset/train.tsv",
                            sep="\t",
                            header=None,
-                           names=columns,
+                           names=LIAR_COLUMNS,
                            quoting=3)
     test_df = pd.read_csv("liar_dataset/test.tsv",
                           sep="\t",
                           header=None,
-                          names=columns,
+                          names=LIAR_COLUMNS,
                           quoting=3)
 
     # Cleanining up the data from rows missing crucial values

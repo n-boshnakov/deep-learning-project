@@ -10,7 +10,8 @@ from torch.utils.data import DataLoader, Dataset
 from transformers import AutoModel, AutoTokenizer
 
 from fake_news_detector.modeling import HybridBertFakeNewsNet
-from fake_news_detector.parse_data import LiarHybridBertDataset, MetadataPreprocessor
+from fake_news_detector.parse_data import (CAT_COLS, LABEL_MAP, LIAR_COLUMNS, NUMERIC_COLS,
+                                           LiarHybridBertDataset, MetadataPreprocessor)
 from fake_news_detector.utils import (plot_training_history, print_evaluation_metrics,
                                       save_artifacts)
 
@@ -39,48 +40,26 @@ def main():
     train_path = os.path.join("liar_dataset", "train.tsv")
     test_path = os.path.join("liar_dataset", "test.tsv")
 
-    cols = [
-        "id", "label", "statement", "subjects", "speaker", "speaker_job",
-        "state_info", "party_affiliation", "barely_true_counts",
-        "false_counts", "half_true_counts", "mostly_true_counts",
-        "pants_on_fire_counts", "context"
-    ]
     df_train = pd.read_csv(train_path,
                            sep='\t',
                            header=None,
-                           names=cols,
+                           names=LIAR_COLUMNS,
                            quoting=3).dropna(subset=['statement', 'label'])
     df_test = pd.read_csv(test_path,
                           sep='\t',
                           header=None,
-                          names=cols,
+                          names=LIAR_COLUMNS,
                           quoting=3).dropna(subset=['statement', 'label'])
 
-    num_cols = [
-        "barely_true_counts", "false_counts", "half_true_counts",
-        "mostly_true_counts", "pants_on_fire_counts"
-    ]
-    for col in num_cols:
+    for col in NUMERIC_COLS:
         df_train[col] = pd.to_numeric(df_train[col], errors='coerce').fillna(0)
         df_test[col] = pd.to_numeric(df_test[col], errors='coerce').fillna(0)
 
-    cat_cols = [
-        "subjects", "speaker", "speaker_job", "state_info",
-        "party_affiliation", "context"
-    ]
-    df_train[cat_cols] = df_train[cat_cols].fillna("unknown")
-    df_test[cat_cols] = df_test[cat_cols].fillna("unknown")
+    df_train[CAT_COLS] = df_train[CAT_COLS].fillna("unknown")
+    df_test[CAT_COLS] = df_test[CAT_COLS].fillna("unknown")
 
-    label_map = {
-        "pants-fire": 0,
-        "false": 1,
-        "barely-true": 2,
-        "half-true": 3,
-        "mostly-true": 4,
-        "true": 5
-    }
-    df_train['label_idx'] = df_train['label'].map(label_map)
-    df_test['label_idx'] = df_test['label'].map(label_map)
+    df_train['label_idx'] = df_train['label'].map(LABEL_MAP)
+    df_test['label_idx'] = df_test['label'].map(LABEL_MAP)
 
     preprocessor = MetadataPreprocessor(min_frequency=MIN_CATEGORY_FREQUENCY)
     preprocessor.fit(df_train)

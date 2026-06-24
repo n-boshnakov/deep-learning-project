@@ -8,7 +8,7 @@ from sklearn.metrics import f1_score, precision_score
 from torch.utils.data import DataLoader, Dataset
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-from fake_news_detector.parse_data import LiarTransformerDataset
+from fake_news_detector.parse_data import LABEL_MAP, LiarTransformerDataset
 from fake_news_detector.utils import (plot_training_history, print_evaluation_metrics,
                                       save_artifacts)
 
@@ -43,16 +43,8 @@ def main():
     df_test = pd.read_csv(test_path, sep='\t', header=None,
                           names=cols).dropna(subset=['statement', 'label'])
 
-    label_map = {
-        "pants-fire": 0,
-        "false": 1,
-        "barely-true": 2,
-        "half-true": 3,
-        "mostly-true": 4,
-        "true": 5
-    }
-    df_train['label_idx'] = df_train['label'].map(label_map)
-    df_test['label_idx'] = df_test['label'].map(label_map)
+    df_train['label_idx'] = df_train['label'].map(LABEL_MAP)
+    df_test['label_idx'] = df_test['label'].map(LABEL_MAP)
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME,

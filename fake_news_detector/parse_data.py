@@ -8,18 +8,37 @@ from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from torch.utils.data import Dataset
 
+LABEL_MAP: dict[str, int] = {
+    "pants-fire": 0,
+    "false": 1,
+    "barely-true": 2,
+    "half-true": 3,
+    "mostly-true": 4,
+    "true": 5
+}
+
+LIAR_COLUMNS: list[str] = [
+    "id", "label", "statement", "subjects", "speaker", "speaker_job",
+    "state_info", "party_affiliation", "barely_true_counts", "false_counts",
+    "half_true_counts", "mostly_true_counts", "pants_on_fire_counts", "context"
+]
+
+NUMERIC_COLS: list[str] = [
+    "barely_true_counts", "false_counts", "half_true_counts",
+    "mostly_true_counts", "pants_on_fire_counts"
+]
+
+CAT_COLS: list[str] = [
+    "subjects", "speaker", "speaker_job", "state_info", "party_affiliation",
+    "context"
+]
+
 
 def load_and_split_data(data_file: str) -> tuple[pd.Series, pd.Series]:
-    columns = [
-        "id", "label", "statement", "subjects", "speaker", "speaker_job",
-        "state_info", "party_affiliation", "barely_true_counts",
-        "false_counts", "half_true_counts", "mostly_true_counts",
-        "pants_on_fire_counts", "context"
-    ]
     loaded_data = pd.read_csv(data_file,
                               sep="\t",
                               header=None,
-                              names=columns,
+                              names=LIAR_COLUMNS,
                               quoting=3)
     data_clean = loaded_data.dropna(subset=["label", "statement"])
     return data_clean["statement"], data_clean["label"]
@@ -65,15 +84,7 @@ class LiarDataset(Dataset):
                  word2idx: dict,
                  max_seq_len: int = 50):
         self.x = text_to_indices(x, word2idx, max_seq_len)
-        self.label_map = {
-            "pants-fire": 0,
-            "false": 1,
-            "barely-true": 2,
-            "half-true": 3,
-            "mostly-true": 4,
-            "true": 5
-        }
-        self.y = torch.tensor([self.label_map[label] for label in y],
+        self.y = torch.tensor([LABEL_MAP[label] for label in y],
                               dtype=torch.long)
 
     def __len__(self):
@@ -84,42 +95,21 @@ class LiarDataset(Dataset):
 
 
 def load_hybrid_data(data_file: str) -> pd.DataFrame:
-    columns = [
-        "id", "label", "statement", "subjects", "speaker", "speaker_job",
-        "state_info", "party_affiliation", "barely_true_counts",
-        "false_counts", "half_true_counts", "mostly_true_counts",
-        "pants_on_fire_counts", "context"
-    ]
     df = pd.read_csv(data_file,
                      sep="\t",
                      header=None,
-                     names=columns,
+                     names=LIAR_COLUMNS,
                      quoting=3)
-
     df = df.dropna(subset=["label", "statement"])
-
-    num_cols = [
-        "barely_true_counts", "false_counts", "half_true_counts",
-        "mostly_true_counts", "pants_on_fire_counts"
-    ]
-    df[num_cols] = df[num_cols].fillna(0.0)
-
-    cat_cols = [
-        "subjects", "speaker", "speaker_job", "state_info",
-        "party_affiliation", "context"
-    ]
-    df[cat_cols] = df[cat_cols].fillna("unknown")
-
+    df[NUMERIC_COLS] = df[NUMERIC_COLS].fillna(0.0)
+    df[CAT_COLS] = df[CAT_COLS].fillna("unknown")
     return df
 
 
 class MetadataPreprocessor:
 
     def __init__(self, min_frequency: int = 1):
-        self.num_cols = [
-            "barely_true_counts", "false_counts", "half_true_counts",
-            "mostly_true_counts", "pants_on_fire_counts"
-        ]
+        self.num_cols = NUMERIC_COLS
         self.cat_cols = [
             "party_affiliation", "state_info", "speaker_job", "speaker",
             "context", "subjects"
@@ -149,18 +139,8 @@ class LiarHybridDataset(Dataset):
                  word2idx: dict,
                  max_seq_len: int = 50):
         self.x_text = text_to_indices(df["statement"], word2idx, max_seq_len)
-
         self.x_meta = metadata_tensor
-
-        self.label_map = {
-            "pants-fire": 0,
-            "false": 1,
-            "barely-true": 2,
-            "half-true": 3,
-            "mostly-true": 4,
-            "true": 5
-        }
-        self.y = torch.tensor([self.label_map[label] for label in df["label"]],
+        self.y = torch.tensor([LABEL_MAP[label] for label in df["label"]],
                               dtype=torch.long)
 
     def __len__(self):

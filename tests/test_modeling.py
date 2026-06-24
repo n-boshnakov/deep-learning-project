@@ -391,3 +391,66 @@ class TestTrainEvaluateTransformerModel(unittest.TestCase):
         # Assert
         self.assertEqual(len(history["train_loss"]), expected_epochs)
         self.assertEqual(len(history["val_f1"]), expected_epochs)
+
+    def test_when_training_text_only_transformer_with_dict_batches_then_succeeds(
+            self):
+        # Arrange — dict loader without meta_features (lines 187-194, 249-256)
+        input_ids = torch.randint(0, 10, (8, self.seq_len))
+        attention_mask = torch.ones(8, self.seq_len, dtype=torch.long)
+        labels = torch.randint(0, self.num_classes, (8, ))
+
+        dataset = [{
+            'input_ids': input_ids[i],
+            'attention_mask': attention_mask[i],
+            'labels': labels[i]
+        } for i in range(8)]
+        loader = DataLoader(dataset, batch_size=self.batch_size)
+
+        model = DummyHFModel(num_classes=self.num_classes)
+        optimizer = optim.AdamW(model.parameters(), lr=1e-4)
+
+        # Act
+        trained_model, actual_f1, _, history = modeling.train_evaluate_transformer_model(
+            model, loader, loader, optimizer, self.device, epochs=1)
+
+        # Assert
+        self.assertIsInstance(trained_model, nn.Module)
+        self.assertIsInstance(actual_f1, float)
+        self.assertIsInstance(history, dict)
+        self.assertIn("train_loss", history)
+
+    def test_when_training_hybrid_transformer_with_dict_batches_then_succeeds(
+            self):
+        # Arrange — dict loader with meta_features (lines 177-185, 239-247)
+        input_ids = torch.randint(0, 10, (8, self.seq_len))
+        attention_mask = torch.ones(8, self.seq_len, dtype=torch.long)
+        labels = torch.randint(0, self.num_classes, (8, ))
+        meta = torch.randn(8, self.meta_dim)
+
+        dataset = [{
+            'input_ids': input_ids[i],
+            'attention_mask': attention_mask[i],
+            'meta_features': meta[i],
+            'labels': labels[i],
+        } for i in range(8)]
+        loader = DataLoader(dataset, batch_size=self.batch_size)
+
+        model = DummyHybridTransformerModel(num_classes=self.num_classes,
+                                            meta_dim=self.meta_dim)
+        criterion = nn.CrossEntropyLoss()
+        optimizer = optim.AdamW(model.parameters(), lr=1e-4)
+
+        # Act
+        trained_model, actual_f1, _, history = modeling.train_evaluate_transformer_model(
+            model,
+            loader,
+            loader,
+            optimizer,
+            self.device,
+            epochs=1,
+            criterion=criterion)
+
+        # Assert
+        self.assertIsInstance(trained_model, nn.Module)
+        self.assertIsInstance(actual_f1, float)
+        self.assertIn("train_loss", history)

@@ -173,7 +173,26 @@ def train_evaluate_transformer_model(
         for batch in train_loader:
             optimizer.zero_grad()
 
-            if len(batch) == 4:
+            if isinstance(batch, dict) and 'meta_features' in batch:
+                assert criterion is not None, "criterion is required for hybrid batches"
+                input_ids = batch['input_ids'].to(device)
+                attention_mask = batch['attention_mask'].to(device)
+                meta_features = batch['meta_features'].to(device)
+                labels = batch['labels'].to(device)
+                logits = model(input_ids=input_ids,
+                               attention_mask=attention_mask,
+                               meta_input=meta_features)
+                loss = criterion(logits, labels)
+            elif isinstance(batch, dict):
+                input_ids = batch['input_ids'].to(device)
+                attention_mask = batch['attention_mask'].to(device)
+                labels = batch['labels'].to(device)
+                outputs = model(input_ids=input_ids,
+                                attention_mask=attention_mask,
+                                labels=labels)
+                loss = outputs.loss
+                logits = outputs.logits
+            elif len(batch) == 4:
                 assert criterion is not None, "criterion is required for hybrid batches"
                 input_ids, attention_mask, meta_features, labels = batch
                 input_ids = input_ids.to(device)
@@ -216,7 +235,26 @@ def train_evaluate_transformer_model(
 
         with torch.no_grad():
             for batch in test_loader:
-                if len(batch) == 4:
+                if isinstance(batch, dict) and 'meta_features' in batch:
+                    assert criterion is not None, "criterion is required for hybrid batches"
+                    input_ids = batch['input_ids'].to(device)
+                    attention_mask = batch['attention_mask'].to(device)
+                    meta_features = batch['meta_features'].to(device)
+                    labels = batch['labels'].to(device)
+                    logits = model(input_ids=input_ids,
+                                   attention_mask=attention_mask,
+                                   meta_input=meta_features)
+                    loss = criterion(logits, labels)
+                elif isinstance(batch, dict):
+                    input_ids = batch['input_ids'].to(device)
+                    attention_mask = batch['attention_mask'].to(device)
+                    labels = batch['labels'].to(device)
+                    outputs = model(input_ids=input_ids,
+                                    attention_mask=attention_mask,
+                                    labels=labels)
+                    loss = outputs.loss
+                    logits = outputs.logits
+                elif len(batch) == 4:
                     assert criterion is not None, "criterion is required for hybrid batches"
                     input_ids, attention_mask, meta_features, labels = batch
                     input_ids = input_ids.to(device)

@@ -13,7 +13,7 @@ from fake_news_detector import modeling
 
 class TestTrainEvaluatePipeline(unittest.TestCase):
 
-    def test_when_valid_data_passed_then_returns_model_and_float_metrics(self):
+    def test_when_text_and_labels_passed_then_returns_fitted_classifier_and_f1_and_precision_as_floats(self):
         # Arrange
         x_train = [
             "this is test data", "this text contains only numbers",
@@ -58,7 +58,7 @@ class DummyHybridNet(nn.Module):
 
 class TestTrainEvaluatePytorchModel(unittest.TestCase):
 
-    def test_when_training_pytorch_model_then_returns_model_and_valid_metrics(
+    def test_when_training_pytorch_model_then_returns_trained_module_and_f1_precision_and_history_dict(
             self):
         # Arrange
         x_train = torch.randn(10, 5)
@@ -140,7 +140,7 @@ class TestTrainEvaluatePytorchModel(unittest.TestCase):
 
 class TestBaselineEmbeddingNet(unittest.TestCase):
 
-    def test_when_forward_pass_then_returns_correct_shape(self):
+    def test_when_forward_pass_then_output_shape_is_batch_size_by_num_classes(self):
         # Arrange
         vocab_size = 100
         embed_dim = 10
@@ -162,7 +162,7 @@ class TestBaselineEmbeddingNet(unittest.TestCase):
 
 class TestHybridRNNFakeNewsNet(unittest.TestCase):
 
-    def test_when_forward_pass_with_different_rnns_then_returns_correct_shape(
+    def test_when_forward_pass_with_different_rnns_then_output_shape_is_batch_size_by_num_classes(
             self):
         # Arrange
         vocab_size = 100
@@ -220,7 +220,7 @@ class TestHybridRNNFakeNewsNet(unittest.TestCase):
 
 class TestHybridModel(unittest.TestCase):
 
-    def test_when_hybrid_bert_model_called_then_returns_correct_output_shape(
+    def test_when_hybrid_bert_model_called_then_output_shape_is_batch_size_by_num_classes(
             self):
         # Arrange
         config = AutoConfig.from_pretrained('bert-base-uncased',
@@ -250,3 +250,141 @@ class TestHybridModel(unittest.TestCase):
 
         # Assert
         self.assertEqual(output.shape, (batch_size, num_classes))
+
+
+class DummyHFOutput:
+    """Mimics a HuggingFace model output with .loss and .logits."""
+
+    def __init__(self, logits, labels):
+        self.logits = logits
+        self.loss = nn.CrossEntropyLoss()(logits, labels)
+
+
+class DummyHFModel(nn.Module):
+    """Mimics a text-only HuggingFace model (AutoModelForSequenceClassification)."""
+
+    def __init__(self, num_classes=6):
+        super().__init__()
+        self.fc = nn.Linear(4, num_classes)
+
+    def forward(self, input_ids, _attention_mask=None, labels=None, **_kwargs):
+        logits = self.fc(input_ids.float())
+        return DummyHFOutput(logits, labels)
+
+    def parameters(self):
+        return self.fc.parameters()
+
+
+class DummyHybridTransformerModel(nn.Module):
+    """Mimics a hybrid transformer model (HybridBertFakeNewsNet)."""
+
+    def __init__(self, num_classes=6, meta_dim=3):
+        super().__init__()
+        self.fc = nn.Linear(4 + meta_dim, num_classes)
+
+    def forward(self, input_ids, attention_mask=None, meta_input=None):
+        combined = torch.cat([input_ids.float(), meta_input], dim=1)
+        return self.fc(combined)
+
+
+class TestTrainEvaluateTransformerModel(unittest.TestCase):
+
+    def setUp(self):
+        self.device = torch.device("cpu")
+        self.seq_len = 4
+        self.meta_dim = 3
+        self.num_classes = 6
+        self.batch_size = 4
+
+        input_ids = torch.randint(0, 10, (8, self.seq_len))
+        attention_mask = torch.ones(8, self.seq_len, dtype=torch.long)
+        labels = torch.randint(0, self.num_classes, (8, ))
+        meta = torch.randn(8, self.meta_dim)
+
+        from torch.utils.data import TensorDataset as TDS
+        self.text_loader = DataLoader(TDS(input_ids, attention_mask, labels),
+                                      batch_size=self.batch_size)
+        self.hybrid_loader = DataLoader(TDS(input_ids, attention_mask, meta,
+                                            labels),
+                                        batch_size=self.batch_size)
+
+    def test_when_training_text_only_transformer_then_returns_trained_module_and_f1_precision_and_history_dict(
+            self):
+        # Arrange
+        model = DummyHFModel(num_classes=self.num_classes)
+        optimizer = optim.AdamW(model.parameters(), lr=1e-4)
+
+        expected_metric_type = float
+        expected_min_value = 0.0
+        expected_max_value = 1.0
+
+        # Act
+        trained_model, actual_f1, actual_prec, history = modeling.train_evaluate_transformer_model(
+            model,
+            self.text_loader,
+            self.text_loader,
+            optimizer,
+            self.device,
+            epochs=1)
+
+        # Assert
+        self.assertIsInstance(trained_model, nn.Module)
+        self.assertIsInstance(actual_f1, expected_metric_type)
+        self.assertIsInstance(actual_prec, expected_metric_type)
+        self.assertIsInstance(history, dict)
+        self.assertIn("train_loss", history)
+        self.assertIn("val_loss", history)
+        self.assertIn("train_f1", history)
+        self.assertIn("val_f1", history)
+        self.assertTrue(expected_min_value <= actual_f1 <= expected_max_value)
+        self.assertTrue(
+            expected_min_value <= actual_prec <= expected_max_value)
+
+    def test_when_training_hybrid_transformer_then_returns_trained_module_and_f1_precision_and_history_dict(
+            self):
+        # Arrange
+        model = DummyHybridTransformerModel(num_classes=self.num_classes,
+                                            meta_dim=self.meta_dim)
+        criterion = nn.CrossEntropyLoss()
+        optimizer = optim.AdamW(model.parameters(), lr=1e-4)
+
+        expected_metric_type = float
+        expected_min_value = 0.0
+        expected_max_value = 1.0
+
+        # Act
+        trained_model, actual_f1, actual_prec, history = modeling.train_evaluate_transformer_model(
+            model,
+            self.hybrid_loader,
+            self.hybrid_loader,
+            optimizer,
+            self.device,
+            epochs=1,
+            criterion=criterion)
+
+        # Assert
+        self.assertIsInstance(trained_model, nn.Module)
+        self.assertIsInstance(actual_f1, expected_metric_type)
+        self.assertIsInstance(actual_prec, expected_metric_type)
+        self.assertTrue(expected_min_value <= actual_f1 <= expected_max_value)
+        self.assertTrue(
+            expected_min_value <= actual_prec <= expected_max_value)
+
+    def test_when_training_transformer_then_history_contains_one_entry_per_epoch(self):
+        # Arrange
+        model = DummyHFModel(num_classes=self.num_classes)
+        optimizer = optim.AdamW(model.parameters(), lr=1e-4)
+        expected_epochs = 2
+
+        # Act
+        _, _, _, history = modeling.train_evaluate_transformer_model(
+            model,
+            self.text_loader,
+            self.text_loader,
+            optimizer,
+            self.device,
+            epochs=expected_epochs)
+
+        # Assert
+        self.assertEqual(len(history["train_loss"]), expected_epochs)
+        self.assertEqual(len(history["val_f1"]), expected_epochs)

@@ -112,7 +112,8 @@ class TestParseDataDeepLearning(unittest.TestCase):
         self.assertEqual(actual_tensor[0].tolist(), expected_padded)
         self.assertEqual(actual_tensor[1].tolist(), expected_truncated)
 
-    def test_when_liardataset_instantiated_then_returns_long_tensor_for_features_and_label_tensor_per_item(self):
+    def test_when_liardataset_instantiated_then_returns_long_tensor_for_features_and_label_tensor_per_item(
+            self):
         # Arrange
         x = pd.Series(["fake news", "real news"])
         y = pd.Series(["pants-fire", "true"])
@@ -158,7 +159,8 @@ class TestHybridDataDeepLearning(unittest.TestCase):
             "real": 4
         }
 
-    def test_when_preprocessing_metadata_then_returns_float32_tensor_with_more_columns_than_numeric_inputs(self):
+    def test_when_preprocessing_metadata_then_returns_float32_tensor_with_more_columns_than_numeric_inputs(
+            self):
         # Arrange
         preprocessor = parse_data.MetadataPreprocessor()
 

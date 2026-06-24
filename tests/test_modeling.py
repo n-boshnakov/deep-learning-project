@@ -13,7 +13,8 @@ from fake_news_detector import modeling
 
 class TestTrainEvaluatePipeline(unittest.TestCase):
 
-    def test_when_text_and_labels_passed_then_returns_fitted_classifier_and_f1_and_precision_as_floats(self):
+    def test_when_text_and_labels_passed_then_returns_fitted_classifier_and_f1_and_precision_as_floats(
+            self):
         # Arrange
         x_train = [
             "this is test data", "this text contains only numbers",
@@ -140,7 +141,8 @@ class TestTrainEvaluatePytorchModel(unittest.TestCase):
 
 class TestBaselineEmbeddingNet(unittest.TestCase):
 
-    def test_when_forward_pass_then_output_shape_is_batch_size_by_num_classes(self):
+    def test_when_forward_pass_then_output_shape_is_batch_size_by_num_classes(
+            self):
         # Arrange
         vocab_size = 100
         embed_dim = 10
@@ -370,7 +372,8 @@ class TestTrainEvaluateTransformerModel(unittest.TestCase):
         self.assertTrue(
             expected_min_value <= actual_prec <= expected_max_value)
 
-    def test_when_training_transformer_then_history_contains_one_entry_per_epoch(self):
+    def test_when_training_transformer_then_history_contains_one_entry_per_epoch(
+            self):
         # Arrange
         model = DummyHFModel(num_classes=self.num_classes)
         optimizer = optim.AdamW(model.parameters(), lr=1e-4)

@@ -38,7 +38,8 @@ class TestVectorizers(unittest.TestCase):
         # Assert
         self.assertEqual(expected_result, actual_result)
 
-    def test_when_spacy_fit_transform_called_then_returns_numpy_array_with_one_row_per_input(self):
+    def test_when_spacy_fit_transform_called_then_returns_numpy_array_with_one_row_per_input(
+            self):
         # Arrange
         vectorizer = features.SpacyVectorizer("en_core_web_md")
         dummy_data = ["test sentence"]
@@ -81,7 +82,8 @@ class TestVectorizers(unittest.TestCase):
         # Assert
         self.assertEqual(expected_result, actual_result)
 
-    def test_when_gensim_fit_transform_called_then_returns_numpy_array_with_one_row_per_input(self):
+    def test_when_gensim_fit_transform_called_then_returns_numpy_array_with_one_row_per_input(
+            self):
         # Arrange
         vectorizer = features.GensimVectorizer("glove-twitter-25")
         dummy_data = ["test sentence", ""]

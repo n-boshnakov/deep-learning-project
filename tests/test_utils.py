@@ -55,7 +55,8 @@ class TestPlotTrainingHistoryUtils(BaseFileTest):
         self.expected_path = os.path.join(self.base_dir,
                                           "Test_Experiment_history.png")
 
-    def test_when_history_with_loss_and_f1_passed_then_saves_png_plot_to_disk(self):
+    def test_when_history_with_loss_and_f1_passed_then_saves_png_plot_to_disk(
+            self):
         # Arrange
         dummy_history = {
             "train_loss": [0.8, 0.5],

@@ -30,7 +30,7 @@ else:
 
 def main():
     print(f"Hardware Acceleration: {device}")
-    print(f"Active Architecture: GPT-2 Text-Only Classification")
+    print(f"Active Architecture: {MODEL_NAME} Text-Only Classification")
 
     train_path = os.path.join("liar_dataset", "train.tsv")
     test_path = os.path.join("liar_dataset", "test.tsv")
